@@ -1,0 +1,9 @@
+# Standalone stack: frontend only, proxies /api to a backend on the host (default :3000)
+name: meeting-frontend
+services:
+  web:
+    build: { context: ., target: dev }
+    environment:
+      VITE_API_PROXY: ${VITE_API_PROXY:-http://host.docker.internal:3000}
+    ports: ["5173:5173"]
+    volumes: [./src:/app/src]
