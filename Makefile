@@ -6,7 +6,7 @@ help: ## Show targets
 
 install: ## npm install locally
 	npm install
-dev: ## Run Vite dev server locally
+dev: ## Run Next.js dev server locally (:3001)
 	npm run dev
 test: ## Run tests locally
 	npm test

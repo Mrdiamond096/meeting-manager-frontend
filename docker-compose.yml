@@ -4,6 +4,6 @@ services:
   web:
     build: { context: ., target: dev }
     environment:
-      VITE_API_PROXY: ${VITE_API_PROXY:-http://host.docker.internal:3000}
-    ports: ["5173:5173"]
+      API_URL: ${API_URL:-http://host.docker.internal:3000}
+    ports: ["3001:3001"]
     volumes: [./src:/app/src]

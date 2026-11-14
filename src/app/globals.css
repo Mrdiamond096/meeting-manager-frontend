@@ -1,0 +1,142 @@
+/*
+ * Candidate Meeting Scheduler — Theme "Lagoon"
+ * Tailwind CSS v4 + shadcn/ui token format
+ * คัดลอกจาก docs/design/tokens/globals.css (umbrella repo) — import ใน src/app/layout.tsx
+ */
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Surface */
+  --background: #f7f8fa;          /* พื้นหลังแอป: เทาเย็นอ่อน */
+  --foreground: #141a24;          /* ตัวอักษรหลัก (16.4:1 บน background) */
+  --card: #ffffff;
+  --card-foreground: #141a24;
+  --popover: #ffffff;
+  --popover-foreground: #141a24;
+
+  /* Brand */
+  --primary: #1f7a6d;             /* Lagoon — ปุ่มหลัก ลิงก์ focus (5.2:1 กับขาว) */
+  --primary-foreground: #ffffff;
+  --accent-brand: #f4b23e;        /* Yolk — ไฮไลต์ "วันนี้" และจุดเด่น ห้ามใช้เป็นสีตัวอักษรบนพื้นขาว */
+  --accent-brand-foreground: #1f2937;
+
+  /* Neutral */
+  --secondary: #eef1f5;
+  --secondary-foreground: #1f2937;
+  --muted: #eef1f5;
+  --muted-foreground: #5f6b7a;    /* ข้อความรอง (5.4:1 บนขาว) */
+  --accent: #e8f3f1;              /* hover / selected row (ฟ้าอมเขียวจาง) */
+  --accent-foreground: #134e46;
+
+  /* Lines & focus */
+  --border: #e3e6eb;
+  --input: #d5dae1;
+  --ring: #1f7a6d;
+
+  /* Semantic: meeting status */
+  --success: #1e6b3a;   --success-subtle: #e6f4ea;   /* Confirmed */
+  --warning: #8a5a00;   --warning-subtle: #fdf3dc;   /* Pending */
+  --destructive: #b42318; --destructive-subtle: #fdecea; /* Cancelled / Delete */
+  --destructive-foreground: #ffffff;
+  --info: #475467;      --info-subtle: #eef1f5;      /* Completed */
+
+  /* Charts (ถ้ามีสรุปสถิติ) */
+  --chart-1: #1f7a6d;
+  --chart-2: #f4b23e;
+  --chart-3: #6b8afd;
+  --chart-4: #9aa5b4;
+  --chart-5: #d26a5c;
+
+  /* Shape */
+  --radius: 0.625rem;   /* 10px */
+
+  /* Typography */
+  --font-sans: "Inter", "IBM Plex Sans Thai", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dark {
+  --background: #0e131a;
+  --foreground: #e8ecf1;
+  --card: #151b24;
+  --card-foreground: #e8ecf1;
+  --popover: #151b24;
+  --popover-foreground: #e8ecf1;
+
+  --primary: #3fb8a6;
+  --primary-foreground: #06201c;
+  --accent-brand: #f4b23e;
+  --accent-brand-foreground: #1f2937;
+
+  --secondary: #1d2530;
+  --secondary-foreground: #e8ecf1;
+  --muted: #1d2530;
+  --muted-foreground: #93a0b0;
+  --accent: #16302c;
+  --accent-foreground: #b8ece3;
+
+  --border: #263040;
+  --input: #2e3a4c;
+  --ring: #3fb8a6;
+
+  --success: #6fcf8f;   --success-subtle: #12301d;
+  --warning: #f4c26b;   --warning-subtle: #332508;
+  --destructive: #f2867a; --destructive-subtle: #3a1512;
+  --destructive-foreground: #1a0503;
+  --info: #b4bfcc;      --info-subtle: #1d2530;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--accent-brand);
+  --color-brand-foreground: var(--accent-brand-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-destructive: var(--destructive);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);  /* 6px  badge, chip */
+  --radius-md: calc(var(--radius) - 2px);  /* 8px  input, button */
+  --radius-lg: var(--radius);              /* 10px card */
+  --radius-xl: calc(var(--radius) + 6px);  /* 16px dialog, sheet */
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  .tabular { font-variant-numeric: tabular-nums; }
+}

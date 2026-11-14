@@ -3,19 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0",
+    "dev": "next dev --hostname 0.0.0.0 --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "next": "15.5.29",
+    "react": "19.1.10",
+    "react-dom": "19.1.10"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "4.3.4",
-    "vite": "5.4.11",
+    "@tailwindcss/postcss": "4.1.18",
+    "@types/node": "24.19.2",
+    "@types/react": "19.1.17",
+    "@types/react-dom": "19.1.11",
+    "tailwindcss": "4.1.18",
+    "typescript": "5.7.2",
     "vitest": "2.1.8"
   }
 }
