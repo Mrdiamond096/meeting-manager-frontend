@@ -70,10 +70,9 @@ describe('Calendar week view', () => {
     mockRange([meeting('a', {}), meeting('b', { dueDate: at(20, 14), endAt: at(20, 15), status: 'PENDING' })]);
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
-    const event = within(wednesday).getByRole('link', { name: /Candidate a, 10:00 AM – 11:00 AM, Confirmed/ });
-    expect(event.getAttribute('href')).toBe('/candidates/c-a?meeting=a');
+    expect(within(wednesday).getByRole('button', { name: /Candidate a, 10:00 AM – 11:00 AM, Confirmed/ })).toBeTruthy();
     const friday = screen.getByRole('list', { name: /Friday, November 20, 2026/ });
-    expect(within(friday).getByRole('link', { name: /Candidate b.*Pending/ })).toBeTruthy();
+    expect(within(friday).getByRole('button', { name: /Candidate b.*Pending/ })).toBeTruthy();
     expect(screen.getByText('2 meetings this week')).toBeTruthy();
   });
 
@@ -85,19 +84,19 @@ describe('Calendar week view', () => {
     ]);
     renderWithProviders(<MeetingsDashboard />);
     const monday = await screen.findByRole('list', { name: /Monday, November 16, 2026/ });
-    expect(within(monday).getByRole('link', { name: /Candidate night/ })).toBeTruthy();
-    expect(screen.queryByRole('link', { name: /Candidate sunday/ })).toBeNull();
+    expect(within(monday).getByRole('button', { name: /Candidate night/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Candidate sunday/ })).toBeNull();
     expect(screen.getByText('1 meetings this week')).toBeTruthy();
   });
 
   it('keeps showing the loaded week with the error when a refresh fails', async () => {
     mockRange([meeting('a', {})]);
     const { client } = renderWithProviders(<MeetingsDashboard />);
-    await screen.findByRole('link', { name: /Candidate a/ });
+    await screen.findByRole('button', { name: /Candidate a/ });
     mockRange(jsonResponse(500, { error: { code: 'INTERNAL', message: 'boom', requestId: 'r-refresh' } }));
     await client.refetchQueries({ queryKey: ['meetings'] });
     expect(await screen.findByText(/r-refresh/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Candidate a/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Candidate a/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 
@@ -146,14 +145,14 @@ describe('Calendar month view', () => {
     expect(q.get('from')).toBe(new Date(2026, 9, 26).toISOString());
     expect(q.get('to')).toBe(new Date(2026, 11, 7).toISOString());
     // The October meeting still shows in its grid cell.
-    expect(within(screen.getByRole('list', { name: /Tuesday, October 27, 2026/ })).getByRole('link', { name: /Candidate oct/ })).toBeTruthy();
+    expect(within(screen.getByRole('list', { name: /Tuesday, October 27, 2026/ })).getByRole('button', { name: /Candidate oct/ })).toBeTruthy();
   });
 
   it('shows three meetings a day and opens the week for the rest', async () => {
     mockRange([9, 10, 11, 12, 13].map((h) => meeting(`m${h}`, { dueDate: at(18, h), endAt: at(18, h, 30) })));
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
-    expect(within(wednesday).getAllByRole('link').map((a) => a.textContent)).toEqual(['9:00 AM Candidate m9', '10:00 AM Candidate m10', '11:00 AM Candidate m11']);
+    expect(within(wednesday).getAllByRole('button').map((a) => a.textContent)).toEqual(['9:00 AM Candidate m9', '10:00 AM Candidate m10', '11:00 AM Candidate m11']);
     await userEvent.click(screen.getByRole('button', { name: '+2 more' }));
     expect(router.replace).toHaveBeenLastCalledWith('/?view=calendar&date=2026-11-18');
   });
@@ -162,7 +161,7 @@ describe('Calendar month view', () => {
     mockRange([meeting('night', { dueDate: at(17, 23), endAt: at(18, 1) })]);
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
-    expect(within(wednesday).getByRole('link', { name: /Candidate night, continues from the day before/ }).textContent).toBe('Candidate night');
+    expect(within(wednesday).getByRole('button', { name: /Candidate night, continues from the day before/ }).textContent).toBe('Candidate night');
   });
 
   it('moves by month and switches back to the week in the URL', async () => {
@@ -172,5 +171,28 @@ describe('Calendar month view', () => {
     expect(router.replace).toHaveBeenLastCalledWith('/?view=calendar&mode=month&date=2026-12-01');
     await userEvent.click(screen.getByRole('radio', { name: 'Week' }));
     expect(router.replace).toHaveBeenLastCalledWith('/?view=calendar&date=2026-11-18');
+  });
+});
+
+describe('Event popover', () => {
+  it('opens details from an event with links to the summary and the edit form, and closes on Escape', async () => {
+    mockRange([meeting('a', { title: 'Technical interview', meetingType: 'ONLINE', provider: 'ZOOM' })]);
+    renderWithProviders(<MeetingsDashboard />);
+    await userEvent.click(await screen.findByRole('button', { name: /Candidate a, 10:00 AM/ }));
+    const popover = await screen.findByRole('dialog', { name: 'Candidate a' });
+    expect(within(popover).getByText('Technical interview')).toBeTruthy();
+    expect(within(popover).getByText('Online · Zoom')).toBeTruthy();
+    expect(within(popover).getByRole('link', { name: 'View details' }).getAttribute('href')).toBe('/candidates/c-a?meeting=a');
+    expect(within(popover).getByRole('link', { name: 'Edit meeting' }).getAttribute('href')).toBe('/meetings/a/edit');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('works the same from the month view', async () => {
+    setSearchParams('view=calendar&mode=month&date=2026-11-18');
+    mockRange([meeting('a', {})]);
+    renderWithProviders(<MeetingsDashboard />);
+    await userEvent.click(await screen.findByRole('button', { name: /Candidate a, 10:00 AM/ }));
+    expect(within(await screen.findByRole('dialog')).getByRole('link', { name: 'View details' })).toBeTruthy();
   });
 });

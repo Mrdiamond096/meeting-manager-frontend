@@ -1,14 +1,13 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { isPastMeeting } from '@/features/meetings/datetime';
 import type { Meeting } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 import { cn } from '@/lib/cn';
-import { meetingHref } from '@/lib/routes';
 import { isSameDay, monthGrid } from '../dates';
 import { meetingsOnDay } from '../layout';
+import { EventPopover } from './event-popover';
 
 /** ADR-014: at most 3 events per day, then "+n more" (opens that week). */
 const MAX_PER_DAY = 3;
@@ -62,11 +61,12 @@ export function MonthView({ date, meetings, onShowWeek }: { date: Date; meetings
                   const when = isSameDay(start, day) ? time.format(start) : null;
                   return (
                     <li key={m.id}>
-                      <Link
-                        href={meetingHref(m)}
-                        aria-label={`${name}, ${when ?? t('calendar.continues')}, ${t(`meetings.status.${m.status}`)}`}
+                      <EventPopover
+                        meeting={m}
+                        now={now}
+                        label={`${name}, ${when ?? t('calendar.continues')}, ${t(`meetings.status.${m.status}`)}`}
                         className={cn(
-                          'flex items-center gap-1.5 truncate rounded-sm px-1 text-xs hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                          'flex w-full items-center gap-1.5 truncate rounded-sm px-1 text-left text-xs hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                           m.status === 'CANCELLED' && 'text-muted-foreground line-through',
                           now && isPastMeeting(m, now) && 'opacity-60',
                         )}
@@ -76,7 +76,7 @@ export function MonthView({ date, meetings, onShowWeek }: { date: Date; meetings
                           {when ? <span className="tabular">{when} </span> : null}
                           {name}
                         </span>
-                      </Link>
+                      </EventPopover>
                     </li>
                   );
                 })}
