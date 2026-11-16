@@ -1,6 +1,6 @@
 # AGENTS.md — meeting-manager-frontend
 
-Rules for AI agents. Roles: **Claude** owns this repo (writes code); **Codex** reviews every PR and owns `README.md`; **Cursor** owns the backend.
+Rules for AI agents. Roles (v4): **Claude** owns this repo, including `README.md` and `.github/**`; **Codex** reviews every PR (README included) and owns umbrella docs; **Cursor** owns the backend.
 Full brief: umbrella repo `docs/discussion/finally/ai-collaboration.md`.
 
 ## Stack
