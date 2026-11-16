@@ -39,7 +39,20 @@ export type ForgotValues = z.infer<typeof forgotSchema>;
 export type ResetValues = z.infer<typeof resetSchema>;
 export type VerifyValues = z.infer<typeof verifySchema>;
 
-/** Only same-app relative paths are allowed as post-login redirects (no open redirect). */
+const NEXT_BASE = 'http://app.invalid';
+
+/**
+ * Only same-app paths are allowed as post-login redirects (no open redirect).
+ * The value is parsed the way the browser will (which strips tabs/newlines and treats `\\` as `/`),
+ * and only the normalised path is returned when it stays on our origin.
+ */
 export function safeNext(next: string | null | undefined): string {
-  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/';
+  if (!next || !next.startsWith('/')) return '/';
+  let url: URL;
+  try {
+    url = new URL(next, NEXT_BASE);
+  } catch {
+    return '/';
+  }
+  return url.origin === NEXT_BASE ? `${url.pathname}${url.search}${url.hash}` : '/';
 }

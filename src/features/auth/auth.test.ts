@@ -12,6 +12,19 @@ describe('auth schemas', () => {
     expect(safeNext(null)).toBe('/');
   });
 
+  it('rejects control characters the URL parser strips into an external host', () => {
+    expect(safeNext('/\n/evil.example')).toBe('/');
+    expect(safeNext('/\t/evil.example')).toBe('/');
+    expect(safeNext(decodeURIComponent('%2F%0A%2Fevil.example'))).toBe('/');
+    expect(safeNext('/\r\n/evil.example/path')).toBe('/');
+    expect(safeNext('\\evil.example')).toBe('/');
+  });
+
+  it('returns the normalised same-origin path', () => {
+    expect(safeNext('/a/../candidates?x=1#top')).toBe('/candidates?x=1#top');
+    expect(safeNext('/candi\tdates')).toBe('/candidates');
+  });
+
   it('enforces 8 chars, 72 bytes and matching confirmation', () => {
     const base = { email: 'a@b.co', password: 'password1', confirmPassword: 'password1' };
     expect(registerSchema.safeParse(base).success).toBe(true);

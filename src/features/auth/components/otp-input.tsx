@@ -4,6 +4,8 @@ import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { cn } from '@/lib/cn';
 
 const LENGTH = 6;
+/** Placeholder for an empty box so the digits after it keep their position; an incomplete code fails `otpField`. */
+const EMPTY = ' ';
 
 interface OtpInputProps {
   value: string;
@@ -17,13 +19,13 @@ interface OtpInputProps {
 /** Six single-digit boxes backed by one string value; supports typing, backspace, arrows and paste. */
 export function OtpInput({ value, onChange, label, invalid, disabled, autoFocus }: OtpInputProps) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
-  const digits = Array.from({ length: LENGTH }, (_, i) => value[i] ?? '');
+  const digits = Array.from({ length: LENGTH }, (_, i) => (value[i] && value[i] !== EMPTY ? value[i] : ''));
   const focus = (i: number) => refs.current[Math.max(0, Math.min(LENGTH - 1, i))]?.focus();
 
   function setDigit(i: number, digit: string) {
-    const next = digits.slice();
-    next[i] = digit;
-    onChange(next.join('').slice(0, LENGTH));
+    const next = digits.map((d) => d || EMPTY);
+    next[i] = digit || EMPTY;
+    onChange(next.join('').trimEnd());
   }
 
   function onKeyDown(i: number, e: KeyboardEvent<HTMLInputElement>) {
