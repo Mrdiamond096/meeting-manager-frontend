@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { expect, it } from 'vitest';
@@ -46,4 +46,20 @@ it('typing from empty fills boxes left to right', async () => {
   render(<Harness />);
   await userEvent.type(box(1), '123456');
   expect(latest).toBe('123456');
+});
+
+it('accepts a whole code inserted into the first box at once (SMS autofill)', async () => {
+  render(<Harness />);
+  await userEvent.click(box(1));
+  const input = box(1);
+  fireEvent.change(input, { target: { value: '112233' } });
+  expect(latest).toBe('112233');
+  expect(boxes()).toBe('112233');
+});
+
+it('pasting a full code into a middle box still fills from the first box', async () => {
+  render(<Harness />);
+  await userEvent.click(box(3));
+  await userEvent.paste('654321');
+  expect(latest).toBe('654321');
 });
