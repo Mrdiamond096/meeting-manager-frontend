@@ -6,6 +6,11 @@ export const isPublicPath = (pathname: string) =>
 
 export const SESSION_COOKIE = 'sid';
 
+export const newMeetingHref = '/meetings/new';
+export const editMeetingHref = (id: string) => `/meetings/${id}/edit`;
+/** C3 (Candidate Summary) will point this at the detail page; until then a card opens the edit form. */
+export const meetingHref = editMeetingHref;
+
 export function loginRedirect(pathname: string, search = ''): string {
   const next = `${pathname}${search}`;
   return next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`;
