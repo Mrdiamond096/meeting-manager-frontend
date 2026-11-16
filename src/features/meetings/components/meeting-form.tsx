@@ -170,6 +170,19 @@ export function MeetingForm() {
                 ))}
               </Select>
             </Field>
+            {positions.isError ? (
+              <Alert tone="error">
+                <p className="font-medium">{t('meetingForm.candidate.positionsError')}</p>
+                {isApiError(positions.error) && positions.error.requestId ? (
+                  <p className="mt-0.5 text-xs">
+                    {t('error.requestId')}: {positions.error.requestId}
+                  </p>
+                ) : null}
+                <Button variant="outline" size="sm" className="mt-2" onClick={() => void positions.refetch()}>
+                  {t('error.retry')}
+                </Button>
+              </Alert>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"

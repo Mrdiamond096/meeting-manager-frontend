@@ -169,6 +169,27 @@ describe('MeetingForm (create)', () => {
     });
   });
 
+  it('explains a failed positions lookup with the request id and retries it', async () => {
+    let attempts = 0;
+    mockApi({
+      'GET /candidates?q=Bo': () => jsonResponse(200, { items: [] }),
+      'GET /candidates/positions': () =>
+        ++attempts === 1
+          ? jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'x', requestId: 'req-7' } })
+          : jsonResponse(200, { items: POSITIONS }),
+    });
+    renderWithProviders(<MeetingForm />);
+    await userEvent.type(candidateInput(), 'Bo');
+    await userEvent.click(await screen.findByRole('option', { name: /Create new candidate “Bo”/ }));
+
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText('Could not load the positions')).toBeTruthy();
+    expect(within(alert).getByText(/req-7/)).toBeTruthy();
+    await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('option', { name: 'QA Engineer' })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('maps API validation details onto the field', async () => {
     mockApi({
       'POST /meetings': () =>
