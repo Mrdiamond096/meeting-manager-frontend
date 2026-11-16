@@ -1,14 +1,13 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { formatTimeRange, isPastMeeting } from '@/features/meetings/datetime';
 import type { Meeting } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 import { cn } from '@/lib/cn';
-import { meetingHref } from '@/lib/routes';
 import { isSameDay, minutesInDay, weekDays } from '../dates';
 import { layoutDay } from '../layout';
+import { EventPopover } from './event-popover';
 
 /** Pixels per hour (h-12 rows); the grid opens at 07:00 with 13 hours in view and scrolls over 00–24 (ADR-014). */
 const HOUR = 48;
@@ -104,18 +103,19 @@ function DayColumn({ day, meetings, now }: { day: Date; meetings: Meeting[]; now
               className="absolute p-0.5"
               ref={place({ top: px(top), height: px(height), left: `${(column / columns) * 100}%`, width: `${100 / columns}%` })}
             >
-              <Link
-                href={meetingHref(meeting)}
-                aria-label={`${name}, ${when}, ${t(`meetings.status.${meeting.status}`)}`}
+              <EventPopover
+                meeting={meeting}
+                now={now}
+                label={`${name}, ${when}, ${t(`meetings.status.${meeting.status}`)}`}
                 className={cn(
-                  'flex h-full flex-col overflow-hidden rounded-sm border-l-[3px] px-1.5 py-0.5 text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'flex h-full w-full flex-col overflow-hidden rounded-sm border-l-[3px] px-1.5 py-0.5 text-left text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   TONE[meeting.status],
                   now && isPastMeeting(meeting, now) && 'opacity-60',
                 )}
               >
-                <span className="truncate font-medium">{name}</span>
-                <span className="tabular truncate text-[11px] text-muted-foreground">{when}</span>
-              </Link>
+                <span className="w-full truncate font-medium">{name}</span>
+                <span className="tabular w-full truncate text-[11px] text-muted-foreground">{when}</span>
+              </EventPopover>
             </li>
           );
         })}

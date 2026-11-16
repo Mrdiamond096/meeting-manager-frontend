@@ -38,3 +38,23 @@ export function minutesInDay(instant: Date, day: Date): number {
   if (instant >= addDays(day, 1)) return 24 * 60;
   return instant.getHours() * 60 + instant.getMinutes() + instant.getSeconds() / 60;
 }
+
+export const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+
+export const addMonths = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth() + n, 1);
+
+/** The 6×7 month grid (ADR-014): 42 days from the Monday on or before the 1st, so the range always fits the API's 42-day limit. */
+export const monthGrid = (d: Date) => Array.from({ length: 42 }, (_, i) => addDays(startOfWeek(startOfMonth(d)), i));
+
+/**
+ * Splits [from, to) into calendar-day chunks of at most `days`. The month grid is 42 days, which is 1,009 hours when it
+ * crosses a fall-back DST change, one more than the API's 42 × 24 h limit; 21-day chunks stay well inside it.
+ */
+export function splitDays(from: Date, to: Date, days = 21): [Date, Date][] {
+  const chunks: [Date, Date][] = [];
+  for (let start = from; start < to; start = addDays(start, days)) {
+    const end = addDays(start, days);
+    chunks.push([start, end < to ? end : to]);
+  }
+  return chunks;
+}

@@ -70,10 +70,9 @@ describe('Calendar week view', () => {
     mockRange([meeting('a', {}), meeting('b', { dueDate: at(20, 14), endAt: at(20, 15), status: 'PENDING' })]);
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
-    const event = within(wednesday).getByRole('link', { name: /Candidate a, 10:00 AM – 11:00 AM, Confirmed/ });
-    expect(event.getAttribute('href')).toBe('/candidates/c-a?meeting=a');
+    expect(within(wednesday).getByRole('button', { name: /Candidate a, 10:00 AM – 11:00 AM, Confirmed/ })).toBeTruthy();
     const friday = screen.getByRole('list', { name: /Friday, November 20, 2026/ });
-    expect(within(friday).getByRole('link', { name: /Candidate b.*Pending/ })).toBeTruthy();
+    expect(within(friday).getByRole('button', { name: /Candidate b.*Pending/ })).toBeTruthy();
     expect(screen.getByText('2 meetings this week')).toBeTruthy();
   });
 
@@ -85,19 +84,19 @@ describe('Calendar week view', () => {
     ]);
     renderWithProviders(<MeetingsDashboard />);
     const monday = await screen.findByRole('list', { name: /Monday, November 16, 2026/ });
-    expect(within(monday).getByRole('link', { name: /Candidate night/ })).toBeTruthy();
-    expect(screen.queryByRole('link', { name: /Candidate sunday/ })).toBeNull();
+    expect(within(monday).getByRole('button', { name: /Candidate night/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Candidate sunday/ })).toBeNull();
     expect(screen.getByText('1 meetings this week')).toBeTruthy();
   });
 
   it('keeps showing the loaded week with the error when a refresh fails', async () => {
     mockRange([meeting('a', {})]);
     const { client } = renderWithProviders(<MeetingsDashboard />);
-    await screen.findByRole('link', { name: /Candidate a/ });
+    await screen.findByRole('button', { name: /Candidate a/ });
     mockRange(jsonResponse(500, { error: { code: 'INTERNAL', message: 'boom', requestId: 'r-refresh' } }));
     await client.refetchQueries({ queryKey: ['meetings'] });
     expect(await screen.findByText(/r-refresh/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Candidate a/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Candidate a/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 
@@ -131,5 +130,82 @@ describe('List | Calendar switch', () => {
     renderWithProviders(<MeetingsDashboard />);
     await userEvent.click(await screen.findByRole('radio', { name: 'List' }));
     await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith('/'));
+  });
+});
+
+describe('Calendar month view', () => {
+  beforeEach(() => setSearchParams('view=calendar&mode=month&date=2026-11-18'));
+
+  it('loads the 42 days of the 6×7 grid and counts only the meetings of the month', async () => {
+    mockRange([meeting('nov', { dueDate: at(18, 10), endAt: at(18, 11) }), meeting('oct', { dueDate: new Date(2026, 9, 27, 9).toISOString(), endAt: new Date(2026, 9, 27, 10).toISOString() })]);
+    renderWithProviders(<MeetingsDashboard />);
+    expect(await screen.findByText('1 meetings in November')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'November 2026' })).toBeTruthy();
+    expect(requests[0]!.searchParams.get('from')).toBe(new Date(2026, 9, 26).toISOString());
+    expect(requests.at(-1)!.searchParams.get('to')).toBe(new Date(2026, 11, 7).toISOString());
+    // The October meeting still shows in its grid cell.
+    expect(within(screen.getByRole('list', { name: /Tuesday, October 27, 2026/ })).getByRole('button', { name: /Candidate oct/ })).toBeTruthy();
+  });
+
+  it('loads the month in chunks within the API limit and keeps a meeting crossing chunks once', async () => {
+    const crossing = meeting('crossing', { dueDate: at(15, 23), endAt: at(16, 1) }); // Sun 15 → Mon 16 Nov, the chunk edge
+    mockRange([crossing]);
+    renderWithProviders(<MeetingsDashboard />);
+    expect(await screen.findByText('1 meetings in November')).toBeTruthy();
+    const ranges = requests.map((u) => [new Date(u.searchParams.get('from')!), new Date(u.searchParams.get('to')!)] as const);
+    expect(ranges).toHaveLength(2);
+    expect(ranges[0]![0]).toEqual(new Date(2026, 9, 26));
+    expect(ranges[0]![1]).toEqual(ranges[1]![0]);
+    expect(ranges[1]![1]).toEqual(new Date(2026, 11, 7));
+    for (const [f, t] of ranges) expect(t.getTime() - f.getTime()).toBeLessThanOrEqual(42 * 24 * 3_600_000);
+    expect(screen.getAllByRole('button', { name: /Candidate crossing/ })).toHaveLength(2); // Sunday and Monday cells
+  });
+
+  it('shows three meetings a day and opens the week for the rest', async () => {
+    mockRange([9, 10, 11, 12, 13].map((h) => meeting(`m${h}`, { dueDate: at(18, h), endAt: at(18, h, 30) })));
+    renderWithProviders(<MeetingsDashboard />);
+    const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
+    expect(within(wednesday).getAllByRole('button').map((a) => a.textContent)).toEqual(['9:00 AM Candidate m9', '10:00 AM Candidate m10', '11:00 AM Candidate m11']);
+    await userEvent.click(screen.getByRole('button', { name: '+2 more' }));
+    expect(router.replace).toHaveBeenLastCalledWith('/?view=calendar&date=2026-11-18');
+  });
+
+  it('shows a meeting still running from the night before without a start time', async () => {
+    mockRange([meeting('night', { dueDate: at(17, 23), endAt: at(18, 1) })]);
+    renderWithProviders(<MeetingsDashboard />);
+    const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
+    expect(within(wednesday).getByRole('button', { name: /Candidate night, continues from the day before/ }).textContent).toBe('Candidate night');
+  });
+
+  it('moves by month and switches back to the week in the URL', async () => {
+    mockRange([]);
+    renderWithProviders(<MeetingsDashboard />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Next month' }));
+    expect(router.replace).toHaveBeenLastCalledWith('/?view=calendar&mode=month&date=2026-12-01');
+    await userEvent.click(screen.getByRole('radio', { name: 'Week' }));
+    expect(router.replace).toHaveBeenLastCalledWith('/?view=calendar&date=2026-11-18');
+  });
+});
+
+describe('Event popover', () => {
+  it('opens details from an event with links to the summary and the edit form, and closes on Escape', async () => {
+    mockRange([meeting('a', { title: 'Technical interview', meetingType: 'ONLINE', provider: 'ZOOM' })]);
+    renderWithProviders(<MeetingsDashboard />);
+    await userEvent.click(await screen.findByRole('button', { name: /Candidate a, 10:00 AM/ }));
+    const popover = await screen.findByRole('dialog', { name: 'Candidate a' });
+    expect(within(popover).getByText('Technical interview')).toBeTruthy();
+    expect(within(popover).getByText('Online · Zoom')).toBeTruthy();
+    expect(within(popover).getByRole('link', { name: 'View details' }).getAttribute('href')).toBe('/candidates/c-a?meeting=a');
+    expect(within(popover).getByRole('link', { name: 'Edit meeting' }).getAttribute('href')).toBe('/meetings/a/edit');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('works the same from the month view', async () => {
+    setSearchParams('view=calendar&mode=month&date=2026-11-18');
+    mockRange([meeting('a', {})]);
+    renderWithProviders(<MeetingsDashboard />);
+    await userEvent.click(await screen.findByRole('button', { name: /Candidate a, 10:00 AM/ }));
+    expect(within(await screen.findByRole('dialog')).getByRole('link', { name: 'View details' })).toBeTruthy();
   });
 });
