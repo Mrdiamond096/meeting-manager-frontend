@@ -24,7 +24,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const nonce = (await headers()).get('x-nonce') ?? undefined;
   const locale = await getLocale();
   return (
-    <html lang={locale} className={`${inter.variable} ${plexThai.variable}`}>
+    <html lang={locale} className={`${inter.variable} ${plexThai.variable}`} suppressHydrationWarning>
       <body className="bg-background font-sans text-foreground antialiased">
         <Providers locale={locale} nonce={nonce}>{children}</Providers>
       </body>

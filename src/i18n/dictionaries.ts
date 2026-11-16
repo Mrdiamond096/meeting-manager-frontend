@@ -6,6 +6,10 @@ export const LOCALE_COOKIE = 'lang';
 const en = {
   'app.title': 'Candidate Meeting Scheduler',
   'shell.language': 'Language',
+  'shell.theme': 'Theme',
+  'shell.theme.light': 'Light',
+  'shell.theme.dark': 'Dark',
+  'shell.theme.system': 'System',
   'shell.userMenu': 'Account menu',
   'shell.logout': 'Log out',
   'shell.skipToContent': 'Skip to content',
@@ -71,6 +75,10 @@ export type MessageKey = keyof typeof en;
 const th: Record<MessageKey, string> = {
   'app.title': 'ระบบนัดสัมภาษณ์ผู้สมัคร',
   'shell.language': 'ภาษา',
+  'shell.theme': 'ธีม',
+  'shell.theme.light': 'สว่าง',
+  'shell.theme.dark': 'มืด',
+  'shell.theme.system': 'ตามระบบ',
   'shell.userMenu': 'เมนูบัญชี',
   'shell.logout': 'ออกจากระบบ',
   'shell.skipToContent': 'ข้ามไปยังเนื้อหา',
