@@ -5,11 +5,13 @@ import type {
   ListMeetingsParams,
   Meeting,
   Page,
+  UpdateMeetingBody,
 } from './types';
 
 export const meetingKeys = {
   all: ['meetings'] as const,
   list: (params: ListMeetingsParams) => ['meetings', 'list', params] as const,
+  detail: (id: string) => ['meetings', 'detail', id] as const,
 };
 
 export const candidateKeys = {
@@ -20,7 +22,9 @@ export const candidateKeys = {
 export const meetingsApi = {
   list: (params: ListMeetingsParams, signal?: AbortSignal) =>
     api<Page<Meeting>>('/meetings', { query: { ...params, mine: params.mine || undefined }, signal }),
+  get: (id: string, signal?: AbortSignal) => api<Meeting>(`/meetings/${id}`, { signal }),
   create: (body: CreateMeetingBody) => api<Meeting>('/meetings', { method: 'POST', body }),
+  update: (id: string, body: UpdateMeetingBody) => api<Meeting>(`/meetings/${id}`, { method: 'PATCH', body }),
 };
 
 export const candidatesApi = {

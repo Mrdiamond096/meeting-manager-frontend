@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import { jsonResponse, renderWithProviders, router } from '@/test/render';
 import { fromLocalParts } from '../datetime';
 import type { CandidateSummary, Meeting } from '../types';
+import { EditMeeting } from './edit-meeting';
 import { MeetingForm } from './meeting-form';
 
 let fetchMock: MockInstance<typeof fetch>;
@@ -54,6 +55,7 @@ function mockApi(routes: Record<string, (call: Call) => Response>) {
 
 const candidateInput = () => screen.getByRole('combobox', { name: 'Candidate (optional)' });
 const saved = (overrides: Partial<Meeting> = {}) => jsonResponse(201, { ...existing, ...overrides });
+const conflict = () => jsonResponse(409, { error: { code: 'VERSION_CONFLICT', message: 'x', requestId: 'r' } });
 
 beforeEach(() => {
   fetchMock = vi.spyOn(globalThis, 'fetch');
@@ -213,5 +215,114 @@ describe('MeetingForm (create)', () => {
     expect(within(alert).getByText(/Could not save the meeting/)).toBeTruthy();
     expect(within(alert).getByText(/req-9/)).toBeTruthy();
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Sync');
+  });
+});
+
+describe('EditMeeting', () => {
+  const detail = `GET /meetings/${existing.id}`;
+
+  it('loads the meeting into the form and sends only the changes with the version', async () => {
+    mockApi({
+      [detail]: () => jsonResponse(200, existing),
+      [`PATCH /meetings/${existing.id}`]: () => jsonResponse(200, { ...existing, version: 5 }),
+    });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    expect(await screen.findByRole('heading', { name: 'Edit meeting' })).toBeTruthy();
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Interview: Alice Tan');
+    expect((screen.getByLabelText('Start time') as HTMLSelectElement).value).toBe('10:00');
+    expect((screen.getByLabelText('Online provider') as HTMLSelectElement).value).toBe('ZOOM');
+
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'CONFIRMED');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
+    expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, status: 'CONFIRMED' });
+  });
+
+  it('shows an overnight end as its own choice, keeps it, and clears it only on request', async () => {
+    const overnight = { ...existing, endAt: fromLocalParts('2030-05-11', '01:00') };
+    mockApi({
+      [detail]: () => jsonResponse(200, overnight),
+      [`PATCH /meetings/${existing.id}`]: () => jsonResponse(200, { ...overnight, endAt: null, version: 5 }),
+    });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    const end = (await screen.findByLabelText('End time')) as HTMLSelectElement;
+    expect(end.options[end.selectedIndex]!.text).toMatch(/^Ends /);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('No changes to save')).toBeTruthy();
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
+
+    await userEvent.selectOptions(end, 'No end time');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(calls.some((c) => c.method === 'PATCH')).toBe(true));
+    expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, endAt: null });
+  });
+
+  it('does not call the API when nothing changed', async () => {
+    mockApi({ [detail]: () => jsonResponse(200, existing) });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('No changes to save')).toBeTruthy();
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
+  });
+
+  it('sends a new candidate inline with the update in a single request', async () => {
+    mockApi({
+      [detail]: () => jsonResponse(200, existing),
+      'GET /candidates/positions': () => jsonResponse(200, { items: POSITIONS }),
+      [`PATCH /meetings/${existing.id}`]: () => jsonResponse(200, { ...existing, version: 5 }),
+    });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove candidate' }));
+    await userEvent.type(candidateInput(), 'Zed');
+    await userEvent.click(await screen.findByRole('option', { name: /Create new candidate/ }).catch(async () => screen.findByText(/Create new candidate/)));
+    await screen.findByRole('option', { name: 'QA Engineer' });
+    await userEvent.selectOptions(screen.getByLabelText('Position'), 'QA Engineer');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
+    expect(calls.filter((c) => c.method !== 'GET').map((c) => `${c.method} ${c.path.split('/').slice(0, 2).join('/')}`)).toEqual(['PATCH /meetings']);
+    expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, candidate: { name: 'Zed', position: 'QA Engineer' } });
+  });
+
+  it('on a version conflict explains it and reloads the latest version', async () => {
+    let reads = 0;
+    mockApi({
+      [detail]: () => jsonResponse(200, ++reads === 1 ? existing : { ...existing, title: 'Changed elsewhere', version: 5 }),
+      [`PATCH /meetings/${existing.id}`]: conflict,
+    });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    await userEvent.type(await screen.findByLabelText('Title'), ' (mine)');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('This meeting was updated elsewhere')).toBeTruthy();
+    expect(router.push).not.toHaveBeenCalled();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Reload' }));
+    await waitFor(() => expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Changed elsewhere'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('explains a meeting that no longer exists', async () => {
+    mockApi({ [detail]: () => jsonResponse(404, { error: { code: 'NOT_FOUND', message: 'x', requestId: 'r' } }) });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    expect(await screen.findByText('This meeting no longer exists')).toBeTruthy();
+  });
+
+  it('keeps a cancelled meeting cancelled unless the user reopens it', async () => {
+    mockApi({
+      [`GET /meetings/${existing.id}`]: () => jsonResponse(200, { ...existing, status: 'CANCELLED' }),
+      [`PATCH /meetings/${existing.id}`]: () => jsonResponse(200, { ...existing, version: 5 }),
+    });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    const status = (await screen.findByLabelText('Status')) as HTMLSelectElement;
+    expect(status.value).toBe('CANCELLED');
+    expect(screen.getByText(/This meeting is cancelled/)).toBeTruthy();
+
+    await userEvent.type(screen.getByLabelText('Notes'), 'note');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
+    expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, description: 'note' });
   });
 });
