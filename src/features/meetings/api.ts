@@ -8,12 +8,14 @@ import type {
   Feedback,
   MeetingDetail,
   Page,
+  RangeMeetingsParams,
   UpdateMeetingBody,
 } from './types';
 
 export const meetingKeys = {
   all: ['meetings'] as const,
   list: (params: ListMeetingsParams) => ['meetings', 'list', params] as const,
+  range: (params: RangeMeetingsParams) => ['meetings', 'range', params] as const,
   detail: (id: string) => ['meetings', 'detail', id] as const,
 };
 
@@ -26,6 +28,8 @@ export const candidateKeys = {
 export const meetingsApi = {
   list: (params: ListMeetingsParams, signal?: AbortSignal) =>
     api<Page<Meeting>>('/meetings', { query: { ...params, mine: params.mine || undefined }, signal }),
+  range: (params: RangeMeetingsParams, signal?: AbortSignal) =>
+    api<{ items: Meeting[] }>('/meetings', { query: { view: 'range', ...params, mine: params.mine || undefined }, signal }).then((r) => r.items),
   get: (id: string, signal?: AbortSignal) => api<MeetingDetail>(`/meetings/${id}`, { signal }),
   create: (body: CreateMeetingBody) => api<Meeting>('/meetings', { method: 'POST', body }),
   update: (id: string, body: UpdateMeetingBody) => api<Meeting>(`/meetings/${id}`, { method: 'PATCH', body }),

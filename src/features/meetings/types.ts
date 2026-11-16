@@ -56,6 +56,14 @@ export interface CandidateDetail {
   history: Meeting[];
 }
 
+/** `GET /meetings?view=range` (calendar, ADR-014): `to - from` ≤ 42 days, no pagination. */
+export interface RangeMeetingsParams {
+  from: string;
+  to: string;
+  status?: MeetingStatus;
+  mine?: boolean;
+}
+
 export interface ListMeetingsParams {
   page: number;
   pageSize: number;

@@ -4,12 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import { CalendarPlus, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MeetingsCalendar } from '@/features/calendar/components/meetings-calendar';
+import { parseDateParam, toDateParam } from '@/features/calendar/dates';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
 import { newMeetingHref } from '@/lib/routes';
@@ -23,6 +25,7 @@ const SKELETON_COUNT = 6;
 
 type StatusFilter = MeetingStatus | 'ALL';
 type Scope = 'all' | 'mine';
+type View = 'list' | 'calendar';
 
 const toStatus = (v: string | null): StatusFilter => (MEETING_STATUSES.includes(v as MeetingStatus) ? (v as MeetingStatus) : 'ALL');
 const toPage = (v: string | null) => (v && /^\d+$/.test(v) && Number(v) >= 1 ? Number(v) : 1);
@@ -35,24 +38,33 @@ function useDashboardFilters() {
   // Mine is the default (ADR-014); Everyone is kept in the URL as mine=false.
   const scope: Scope = params.get('mine') === 'false' ? 'all' : 'mine';
   const page = toPage(params.get('page'));
+  // Calendar state lives in the URL too: /?view=calendar&date=2026-11-16 (ADR-014, deep-linkable).
+  const view: View = params.get('view') === 'calendar' ? 'calendar' : 'list';
+  const dateParam = params.get('date');
 
-  function update(next: { status?: StatusFilter; scope?: Scope; page?: number }) {
+  function update(next: { status?: StatusFilter; scope?: Scope; page?: number; view?: View; date?: Date }) {
     const q = new URLSearchParams();
     const s = next.status ?? status;
     const sc = next.scope ?? scope;
+    const v = next.view ?? view;
     const p = next.page ?? 1; // any filter change goes back to page 1
+    if (v === 'calendar') q.set('view', 'calendar');
+    const d = next.date ? toDateParam(next.date) : v === 'calendar' ? dateParam : null;
+    if (v === 'calendar' && d) q.set('date', d);
     if (s !== 'ALL') q.set('status', s);
     if (sc === 'all') q.set('mine', 'false');
-    if (p > 1) q.set('page', String(p));
+    if (v === 'list' && p > 1) q.set('page', String(p));
     const qs = q.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
-  return { status, scope, page, update };
+  return { status, scope, page, view, dateParam, update };
 }
 
 export function MeetingsDashboard() {
   const { t } = useI18n();
-  const { status, scope, page, update } = useDashboardFilters();
+  const { status, scope, page, view, dateParam, update } = useDashboardFilters();
+  const [weekCount, setWeekCount] = useState<number>();
+  const onWeekCount = useCallback((n: number | undefined) => setWeekCount(n), []);
   // Fixed per visit so the query key stays stable; "upcoming" = from the start of today (local).
   const [now] = useState(() => new Date());
   const params: ListMeetingsParams = {
@@ -66,6 +78,7 @@ export function MeetingsDashboard() {
     queryKey: meetingKeys.list(params),
     queryFn: ({ signal }) => meetingsApi.list(params, signal),
     placeholderData: (previous) => previous,
+    enabled: view === 'list',
   });
   const data = query.data;
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
@@ -83,7 +96,11 @@ export function MeetingsDashboard() {
           <h1 id="meetings-heading" className="text-2xl font-semibold tracking-tight">
             {t('meetings.title')}
           </h1>
-          {data ? (
+          {view === 'calendar' ? (
+            weekCount !== undefined ? (
+              <p className="tabular mt-1 text-sm text-muted-foreground">{t('calendar.count').replace('{n}', String(weekCount))}</p>
+            ) : null
+          ) : data ? (
             <p className="tabular mt-1 text-sm text-muted-foreground">{t('meetings.count').replace('{n}', String(data.total))}</p>
           ) : null}
         </div>
@@ -96,6 +113,15 @@ export function MeetingsDashboard() {
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
+        <Segmented<View>
+          label={t('calendar.view')}
+          value={view}
+          onChange={(value) => update({ view: value })}
+          options={[
+            { value: 'list', label: t('calendar.list') },
+            { value: 'calendar', label: t('calendar.calendar') },
+          ]}
+        />
         <Segmented<StatusFilter>
           label={t('meetings.filter.status')}
           value={status}
@@ -116,7 +142,15 @@ export function MeetingsDashboard() {
         />
       </div>
 
-      {query.isError && !data ? (
+      {view === 'calendar' ? (
+        <MeetingsCalendar
+          date={parseDateParam(dateParam, now)}
+          status={status === 'ALL' ? undefined : status}
+          mine={scope === 'mine'}
+          onDateChange={(date) => update({ date })}
+          onCount={onWeekCount}
+        />
+      ) : query.isError && !data ? (
         <Alert tone="error">
           <p className="font-medium">{t('meetings.error.title')}</p>
           {isApiError(query.error) && query.error.requestId ? (
