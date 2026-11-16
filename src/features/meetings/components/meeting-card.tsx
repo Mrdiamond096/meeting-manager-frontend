@@ -5,19 +5,11 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { useI18n } from '@/i18n/i18n-provider';
 import { cn } from '@/lib/cn';
+import { initials } from '@/lib/initials';
 import { meetingHref } from '@/lib/routes';
 import { formatMeetingWhen, isPastMeeting, isSameLocalDay } from '../datetime';
 import type { Meeting } from '../types';
 import { StatusBadge } from './status-badge';
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join('');
-}
 
 export function MeetingCard({ meeting, now }: { meeting: Meeting; now: Date }) {
   const { t, intl, locale } = useI18n();
@@ -67,7 +59,7 @@ export function MeetingCard({ meeting, now }: { meeting: Meeting; now: Date }) {
         </p>
       ) : null}
       <Link
-        href={meetingHref(meeting.id)}
+        href={meetingHref(meeting)}
         className="mt-auto inline-flex items-center gap-1 self-end text-sm font-medium text-primary after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
       >
         {t('meetings.viewDetails')}

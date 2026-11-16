@@ -38,6 +38,24 @@ export interface Page<T> {
   total: number;
 }
 
+export interface Feedback {
+  id: string;
+  meetingId: string;
+  body: string;
+  createdById: string | null;
+  createdAt: string;
+}
+
+/** GET /meetings/:id: the meeting with its feedback, newest first. */
+export type MeetingDetail = Meeting & { feedback: Feedback[] };
+
+/** GET /candidates/:id: upcoming ascending, history (everything else) descending. */
+export interface CandidateDetail {
+  candidate: CandidateSummary;
+  upcoming: Meeting[];
+  history: Meeting[];
+}
+
 export interface ListMeetingsParams {
   page: number;
   pageSize: number;
