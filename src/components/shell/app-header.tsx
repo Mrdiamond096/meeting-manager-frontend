@@ -16,6 +16,7 @@ import { LOCALES } from '@/i18n/dictionaries';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { BrandLogo } from './brand-logo';
+import { ThemeSwitch } from './theme-switch';
 import { useCurrentUser } from './use-current-user';
 
 function initials(email: string | undefined): string {
@@ -69,6 +70,7 @@ export function AppHeader() {
         </Link>
         <div className="flex-1" />
         <LanguageSwitch />
+        <ThemeSwitch />
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={t('shell.userMenu')}
