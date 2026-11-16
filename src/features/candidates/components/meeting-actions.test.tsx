@@ -1,5 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import type { CandidateDetail, Meeting } from '@/features/meetings/types';
 import { jsonResponse, renderWithProviders, router, setSearchParams } from '@/test/render';
@@ -153,5 +154,56 @@ describe('Add feedback', () => {
     const field = await screen.findByLabelText('Add feedback');
     await userEvent.click(screen.getAllByRole('button', { name: 'Add feedback' })[0]);
     expect(document.activeElement).toBe(field);
+  });
+});
+
+describe('Switching to another meeting of the candidate', () => {
+  const other: Meeting = { ...next, id: 'm2', title: 'Final round', version: 7 };
+
+  /** Mimics a back/forward or history-link navigation: `?meeting=` changes while the summary stays mounted. */
+  function Harness() {
+    const [, rerender] = useState(0);
+    return (
+      <>
+        <button type="button" onClick={() => { setSearchParams('meeting=m2'); rerender((n) => n + 1); }}>
+          show m2
+        </button>
+        <CandidateSummary id="c1" />
+      </>
+    );
+  }
+
+  function mockTwo() {
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = new URL(String(input), 'http://localhost');
+      const path = url.pathname.replace('/api/v1', '');
+      const method = init?.method ?? 'GET';
+      calls.push({ method, path, search: url.search, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      if (path === '/candidates/c1') return jsonResponse(200, { candidate: ALICE, upcoming: [next, other], history: [] } satisfies CandidateDetail);
+      if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'USER' } });
+      if (method === 'GET' && path === '/meetings/m1') return jsonResponse(200, { ...next, feedback: [] });
+      if (method === 'GET' && path === '/meetings/m2') return jsonResponse(200, { ...other, feedback: [] });
+      throw new Error(`Unexpected request ${method} ${path}`);
+    });
+  }
+
+  it('closes a delete confirmation opened for the previous meeting instead of deleting the new one', async () => {
+    mockTwo();
+    renderWithProviders(<Harness />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    await screen.findByRole('dialog', { name: 'Delete this meeting?' });
+    fireEvent.click(screen.getByText('show m2')); // the open modal hides the rest of the page from queries by role
+    await screen.findByText('Final round', { selector: 'dd' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(writes()).toEqual([]);
+  });
+
+  it('does not carry a feedback draft over to the newly shown meeting', async () => {
+    mockTwo();
+    renderWithProviders(<Harness />);
+    await userEvent.type(await screen.findByLabelText('Add feedback'), 'Notes for m1');
+    fireEvent.click(screen.getByRole('button', { name: 'show m2' }));
+    await screen.findByText('Final round', { selector: 'dd' });
+    expect((screen.getByLabelText('Add feedback') as HTMLTextAreaElement).value).toBe('');
   });
 });
