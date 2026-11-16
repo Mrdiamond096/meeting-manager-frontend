@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fromLocalParts } from './datetime';
-import { mapApiErrors, meetingFormSchema, meetingToFormValues, toCreateBody, toUpdateBody, emptyFormValues } from './form';
+import { emptyFormValues, KEEP_END, mapApiErrors, meetingFormSchema, meetingToFormValues, toCreateBody, toUpdateBody } from './form';
 import type { Meeting } from './types';
 
 const meeting: Meeting = {
@@ -86,6 +86,20 @@ describe('toUpdateBody', () => {
     const body = toUpdateBody(meeting, initial, { ...initial, date: '2030-05-11' });
     expect(body?.dueDate).toBe(fromLocalParts('2030-05-11', '10:00'));
     expect(body?.endAt).toBe(fromLocalParts('2030-05-11', '11:00'));
+  });
+
+  it('tells an end on another day apart from no end, and lets the user clear it', () => {
+    const overnight = { ...meeting, endAt: fromLocalParts('2030-05-11', '01:00') };
+    const start = meetingToFormValues(overnight);
+    expect(start.endTime).toBe(KEEP_END);
+    expect(meetingToFormValues({ ...meeting, endAt: null }).endTime).toBe('');
+    expect(toUpdateBody(overnight, start, { ...start, endTime: '' })).toEqual({ version: 3, endAt: null });
+    expect(toUpdateBody(overnight, start, { ...start, endTime: '12:00' })?.endAt).toBe(fromLocalParts('2030-05-10', '12:00'));
+  });
+
+  it('does not treat the kept overnight end as a time to compare with the start', () => {
+    const valid = { ...emptyFormValues(new Date()), title: 'T', startTime: '10:00' };
+    expect(meetingFormSchema.safeParse({ ...valid, endTime: KEEP_END }).success).toBe(true);
   });
 
   it('moves a cross-midnight end together with the start when only the date changes', () => {

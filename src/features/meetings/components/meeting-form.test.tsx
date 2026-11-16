@@ -238,6 +238,26 @@ describe('EditMeeting', () => {
     expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, status: 'CONFIRMED' });
   });
 
+  it('shows an overnight end as its own choice, keeps it, and clears it only on request', async () => {
+    const overnight = { ...existing, endAt: fromLocalParts('2030-05-11', '01:00') };
+    mockApi({
+      [detail]: () => jsonResponse(200, overnight),
+      [`PATCH /meetings/${existing.id}`]: () => jsonResponse(200, { ...overnight, endAt: null, version: 5 }),
+    });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    const end = (await screen.findByLabelText('End time')) as HTMLSelectElement;
+    expect(end.options[end.selectedIndex]!.text).toMatch(/^Ends /);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('No changes to save')).toBeTruthy();
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
+
+    await userEvent.selectOptions(end, 'No end time');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(calls.some((c) => c.method === 'PATCH')).toBe(true));
+    expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, endAt: null });
+  });
+
   it('does not call the API when nothing changed', async () => {
     mockApi({ [detail]: () => jsonResponse(200, existing) });
     renderWithProviders(<EditMeeting id={existing.id} />);

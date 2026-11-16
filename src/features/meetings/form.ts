@@ -5,6 +5,9 @@ import type { CandidateSummary, CreateMeetingBody, Meeting, MeetingStatus, Updat
 
 export type CandidateMode = 'none' | 'existing' | 'new';
 
+/** An end on another day cannot be picked with one date field, so an existing one is kept as its own choice. */
+export const KEEP_END = 'keep';
+
 export interface MeetingFormValues {
   candidateMode: CandidateMode;
   candidate: CandidateSummary | null;
@@ -13,7 +16,7 @@ export interface MeetingFormValues {
   title: string;
   date: string;
   startTime: string;
-  /** Empty string = no end time. */
+  /** Empty string = no end time; `KEEP_END` = an existing end on another day. */
   endTime: string;
   meetingType: '' | 'ONSITE' | 'ONLINE';
   provider: '' | 'ZOOM' | 'GOOGLE_MEET' | 'OTHER';
@@ -47,7 +50,7 @@ export const meetingFormSchema = z
       else if (name.length > 120) ctx.addIssue({ code: 'custom', path: ['newName'], message: 'meetings.validation.nameMax' });
       if (!v.newPosition) ctx.addIssue({ code: 'custom', path: ['newPosition'], message: 'meetings.validation.positionRequired' });
     }
-    if (v.endTime && v.startTime && v.endTime <= v.startTime) {
+    if (v.endTime && v.endTime !== KEEP_END && v.startTime && v.endTime <= v.startTime) {
       ctx.addIssue({ code: 'custom', path: ['endTime'], message: 'meetings.validation.endAfterStart' });
     }
   });
@@ -86,7 +89,7 @@ export function meetingToFormValues(m: Meeting): MeetingFormValues {
     title: m.title,
     date: start.date,
     startTime: start.time,
-    endTime: end && end.date === start.date ? end.time : '',
+    endTime: !end ? '' : end.date === start.date ? end.time : KEEP_END,
     meetingType: m.meetingType ?? '',
     provider: m.provider ?? '',
     description: m.description,
@@ -118,9 +121,11 @@ export function toCreateBody(v: MeetingFormValues): CreateMeetingBody {
 function nextEndAt(original: Meeting, initial: MeetingFormValues, v: MeetingFormValues, dueDate: string): string | null | undefined {
   if (v.endTime !== initial.endTime) return v.endTime ? fromLocalParts(v.date, v.endTime) : null;
   if (v.date === initial.date) return undefined;
-  if (v.endTime) return fromLocalParts(v.date, v.endTime);
-  // An end on another day cannot be edited with one date field, so moving the date keeps the end at the same distance from the start.
-  return original.endAt ? new Date(Date.parse(original.endAt) + Date.parse(dueDate) - Date.parse(original.dueDate)).toISOString() : undefined;
+  if (v.endTime === KEEP_END) {
+    // Moving the date keeps the end on another day at the same distance from the start.
+    return new Date(Date.parse(original.endAt!) + Date.parse(dueDate) - Date.parse(original.dueDate)).toISOString();
+  }
+  return v.endTime ? fromLocalParts(v.date, v.endTime) : undefined;
 }
 
 /**

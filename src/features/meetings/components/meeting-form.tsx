@@ -20,6 +20,7 @@ import { candidateKeys, candidatesApi, meetingKeys, meetingsApi } from '../api';
 import { TIME_SLOTS } from '../datetime';
 import {
   emptyFormValues,
+  KEEP_END,
   mapApiErrors,
   meetingFormSchema,
   meetingToFormValues,
@@ -57,7 +58,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function MeetingForm({ meeting, onReload }: MeetingFormProps) {
-  const { t } = useI18n();
+  const { t, intl } = useI18n();
   const router = useRouter();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -283,7 +284,15 @@ export function MeetingForm({ meeting, onReload }: MeetingFormProps) {
                 {...register('endTime')}
               >
                 <option value="">{t('meetingForm.field.noEnd')}</option>
-                {timeOptions(initial.endTime).map((s) => (
+                {meeting?.endAt && initial.endTime === KEEP_END ? (
+                  <option value={KEEP_END}>
+                    {t('meetingForm.field.endsLater').replace(
+                      '{when}',
+                      () => new Date(meeting.endAt!).toLocaleString(intl, { dateStyle: 'medium', timeStyle: 'short' }),
+                    )}
+                  </option>
+                ) : null}
+                {timeOptions(initial.endTime === KEEP_END ? '' : initial.endTime).map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
