@@ -141,11 +141,24 @@ describe('Calendar month view', () => {
     renderWithProviders(<MeetingsDashboard />);
     expect(await screen.findByText('1 meetings in November')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'November 2026' })).toBeTruthy();
-    const q = requests[0]!.searchParams;
-    expect(q.get('from')).toBe(new Date(2026, 9, 26).toISOString());
-    expect(q.get('to')).toBe(new Date(2026, 11, 7).toISOString());
+    expect(requests[0]!.searchParams.get('from')).toBe(new Date(2026, 9, 26).toISOString());
+    expect(requests.at(-1)!.searchParams.get('to')).toBe(new Date(2026, 11, 7).toISOString());
     // The October meeting still shows in its grid cell.
     expect(within(screen.getByRole('list', { name: /Tuesday, October 27, 2026/ })).getByRole('button', { name: /Candidate oct/ })).toBeTruthy();
+  });
+
+  it('loads the month in chunks within the API limit and keeps a meeting crossing chunks once', async () => {
+    const crossing = meeting('crossing', { dueDate: at(15, 23), endAt: at(16, 1) }); // Sun 15 → Mon 16 Nov, the chunk edge
+    mockRange([crossing]);
+    renderWithProviders(<MeetingsDashboard />);
+    expect(await screen.findByText('1 meetings in November')).toBeTruthy();
+    const ranges = requests.map((u) => [new Date(u.searchParams.get('from')!), new Date(u.searchParams.get('to')!)] as const);
+    expect(ranges).toHaveLength(2);
+    expect(ranges[0]![0]).toEqual(new Date(2026, 9, 26));
+    expect(ranges[0]![1]).toEqual(ranges[1]![0]);
+    expect(ranges[1]![1]).toEqual(new Date(2026, 11, 7));
+    for (const [f, t] of ranges) expect(t.getTime() - f.getTime()).toBeLessThanOrEqual(42 * 24 * 3_600_000);
+    expect(screen.getAllByRole('button', { name: /Candidate crossing/ })).toHaveLength(2); // Sunday and Monday cells
   });
 
   it('shows three meetings a day and opens the week for the rest', async () => {

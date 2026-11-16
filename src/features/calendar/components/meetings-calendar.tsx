@@ -11,12 +11,21 @@ import type { Meeting, MeetingStatus, RangeMeetingsParams } from '@/features/mee
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
 import { Segmented } from '@/components/ui/segmented';
-import { addDays, addMonths, monthGrid, startOfMonth, startOfWeek } from '../dates';
+import { addDays, addMonths, monthGrid, splitDays, startOfMonth, startOfWeek } from '../dates';
 import { endOf } from '../layout';
 import { MonthView } from './month-view';
 import { WeekView } from './week-view';
 
 const overlaps = (m: Meeting, from: Date, to: Date) => new Date(m.dueDate) < to && endOf(m) > from;
+
+/** One request per chunk (see splitDays); a meeting crossing a chunk edge comes back twice and is kept once. */
+async function loadRange(params: RangeMeetingsParams, from: Date, to: Date, signal?: AbortSignal): Promise<Meeting[]> {
+  const pages = await Promise.all(
+    splitDays(from, to).map(([f, t]) => meetingsApi.range({ ...params, from: f.toISOString(), to: t.toISOString() }, signal)),
+  );
+  const byId = new Map(pages.flat().map((m) => [m.id, m]));
+  return [...byId.values()].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id));
+}
 
 export type CalendarMode = 'week' | 'month';
 
@@ -65,7 +74,7 @@ function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSumm
   };
   const query = useQuery({
     queryKey: meetingKeys.range(params),
-    queryFn: ({ signal }) => meetingsApi.range(params, signal),
+    queryFn: ({ signal }) => loadRange(params, start, end, signal),
     placeholderData: (previous) => previous,
   });
   const zone = useZoneName(intl, start);

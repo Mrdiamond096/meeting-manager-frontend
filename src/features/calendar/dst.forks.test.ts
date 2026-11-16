@@ -3,7 +3,7 @@ process.env.TZ = 'America/New_York';
 
 import { describe, expect, it } from 'vitest';
 import type { Meeting } from '@/features/meetings/types';
-import { minutesInDay } from './dates';
+import { minutesInDay, monthGrid, splitDays } from './dates';
 import { layoutDay } from './layout';
 
 const meeting = (start: Date, end: Date): Meeting => ({ id: 'm', dueDate: start.toISOString(), endAt: end.toISOString(), status: 'PENDING' }) as Meeting;
@@ -28,5 +28,22 @@ describe('positions on DST days (America/New_York)', () => {
   it('still ends the day at the bottom of the grid', () => {
     const day = new Date(2026, 2, 8);
     expect(minutesInDay(new Date(2026, 2, 9, 0, 30), day)).toBe(1440);
+  });
+});
+
+describe('month range across the fall-back change (America/New_York)', () => {
+  const API_MAX_MS = 42 * 24 * 3_600_000;
+
+  it('is longer than the API allows as one request, but every chunk fits', () => {
+    const grid = monthGrid(new Date(2026, 10, 18)); // 26 Oct – 6 Dec 2026, includes 1 Nov (25 hours)
+    const from = grid[0]!;
+    const to = new Date(2026, 11, 7);
+    expect(to.getTime() - from.getTime()).toBe(API_MAX_MS + 3_600_000); // 1,009 hours
+    const chunks = splitDays(from, to);
+    expect(chunks).toHaveLength(2);
+    expect(chunks[0]![0]).toEqual(from);
+    expect(chunks[1]![1]).toEqual(to);
+    expect(chunks[0]![1]).toEqual(chunks[1]![0]);
+    for (const [f, t] of chunks) expect(t.getTime() - f.getTime()).toBeLessThanOrEqual(API_MAX_MS);
   });
 });
