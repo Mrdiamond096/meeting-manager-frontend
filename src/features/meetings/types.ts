@@ -58,3 +58,18 @@ export interface CreateMeetingBody {
   candidateId?: string;
   candidate?: { name: string; position: string };
 }
+
+/** PATCH /meetings/:id body: any subset plus the required `version`. */
+export interface UpdateMeetingBody {
+  version: number;
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  endAt?: string | null;
+  status?: Exclude<MeetingStatus, 'CANCELLED'>;
+  meetingType?: MeetingType | null;
+  provider?: Provider | null;
+  candidateId?: string | null;
+  /** Created and linked in the same transaction; never sent together with `candidateId`. */
+  candidate?: { name: string; position: string };
+}
