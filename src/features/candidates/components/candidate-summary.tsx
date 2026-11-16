@@ -15,7 +15,7 @@ import { isPastMeeting } from '@/features/meetings/datetime';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
 import { initials } from '@/lib/initials';
-import { editMeetingHref } from '@/lib/routes';
+import { MeetingActions } from './meeting-actions';
 import { MeetingInfo } from './meeting-info';
 import { MeetingLinks } from './meeting-links';
 import { MeetingNotes } from './meeting-notes';
@@ -87,11 +87,7 @@ export function CandidateSummary({ id }: { id: string }) {
             </p>
           </div>
         </div>
-        {focused ? (
-          <Button asChild variant="outline">
-            <Link href={editMeetingHref(focused.id)}>{t('candidate.edit')}</Link>
-          </Button>
-        ) : null}
+        {focused ? <MeetingActions meeting={focused} candidateId={candidate.id} /> : null}
       </header>
 
       {focused ? (
