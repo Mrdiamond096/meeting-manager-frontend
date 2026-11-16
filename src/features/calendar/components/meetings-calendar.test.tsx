@@ -51,7 +51,8 @@ describe('Calendar week view', () => {
     expect(await screen.findByText('0 meetings this week')).toBeTruthy();
     const q = requests[0]!.searchParams;
     expect(q.get('view')).toBe('range');
-    expect(q.get('from')).toBe(new Date(2026, 10, 16).toISOString());
+    // One day early, to catch meetings that start on Sunday night and run into Monday.
+    expect(q.get('from')).toBe(new Date(2026, 10, 15).toISOString());
     expect(q.get('to')).toBe(new Date(2026, 10, 23).toISOString());
     expect(q.get('mine')).toBe('true');
     expect(q.has('page')).toBe(false);
@@ -75,6 +76,29 @@ describe('Calendar week view', () => {
     const friday = screen.getByRole('list', { name: /Friday, November 20, 2026/ });
     expect(within(friday).getByRole('link', { name: /Candidate b.*Pending/ })).toBeTruthy();
     expect(screen.getByText('2 meetings this week')).toBeTruthy();
+  });
+
+  it('shows a meeting from Sunday night on Monday, but not meetings that end before the week', async () => {
+    mockRange([
+      meeting('night', { dueDate: at(15, 23), endAt: at(16, 1) }),
+      meeting('sunday', { dueDate: at(15, 10), endAt: at(15, 11) }),
+    ]);
+    renderWithProviders(<MeetingsDashboard />);
+    const monday = await screen.findByRole('list', { name: /Monday, November 16, 2026/ });
+    expect(within(monday).getByRole('link', { name: /Candidate night/ })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Candidate sunday/ })).toBeNull();
+    expect(screen.getByText('1 meetings this week')).toBeTruthy();
+  });
+
+  it('keeps showing the loaded week with the error when a refresh fails', async () => {
+    mockRange([meeting('a', {})]);
+    const { client } = renderWithProviders(<MeetingsDashboard />);
+    await screen.findByRole('link', { name: /Candidate a/ });
+    mockRange(jsonResponse(500, { error: { code: 'INTERNAL', message: 'boom', requestId: 'r-refresh' } }));
+    await client.refetchQueries({ queryKey: ['meetings'] });
+    expect(await screen.findByText(/r-refresh/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Candidate a/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 
   it('moves a week back and forward and returns to today through the URL', async () => {

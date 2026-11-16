@@ -29,9 +29,12 @@ export function parseDateParam(value: string | null, fallback: Date): Date {
   return d.getMonth() === Number(m[2]) - 1 ? d : startOfDay(fallback);
 }
 
-/** Minutes since local midnight of `day`, clamped to the day (events crossing midnight are cut at the edge). */
+/**
+ * Wall-clock minutes of `instant` on the grid of local `day` (0–1440), as the hour labels read: 10:00 is 600 even on a
+ * DST day, when 10:00 is 9 or 11 elapsed hours after midnight. Instants before or after the day clamp to its edges.
+ */
 export function minutesInDay(instant: Date, day: Date): number {
-  const minutes = (instant.getTime() - day.getTime()) / 60_000;
-  const length = (addDays(day, 1).getTime() - day.getTime()) / 60_000; // 1380/1500 on DST days
-  return Math.min(Math.max(minutes, 0), length);
+  if (instant < day) return 0;
+  if (instant >= addDays(day, 1)) return 24 * 60;
+  return instant.getHours() * 60 + instant.getMinutes() + instant.getSeconds() / 60;
 }

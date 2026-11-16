@@ -7,11 +7,17 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { meetingKeys, meetingsApi } from '@/features/meetings/api';
-import type { MeetingStatus, RangeMeetingsParams } from '@/features/meetings/types';
+import type { Meeting, MeetingStatus, RangeMeetingsParams } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
 import { addDays, startOfWeek } from '../dates';
+import { DEFAULT_MINUTES } from '../layout';
 import { WeekView } from './week-view';
+
+const OVERNIGHT_DAYS = 1;
+
+const endOf = (m: Meeting) => new Date(m.endAt ?? new Date(new Date(m.dueDate).getTime() + DEFAULT_MINUTES * 60_000));
+const overlaps = (m: Meeting, from: Date, to: Date) => new Date(m.dueDate) < to && endOf(m) > from;
 
 interface Props {
   date: Date;
@@ -45,7 +51,9 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
   const start = startOfWeek(date);
   const end = addDays(start, 7);
   const params: RangeMeetingsParams = {
-    from: start.toISOString(),
+    // The API filters by start time, so a meeting from Sunday night into Monday starts in the previous week.
+    // Asking from the day before catches overnight meetings (up to 24h); longer ones need an overlap filter in the API.
+    from: addDays(start, -OVERNIGHT_DAYS).toISOString(),
     to: end.toISOString(),
     ...(status ? { status } : {}),
     ...(mine ? { mine: true } : {}),
@@ -56,7 +64,8 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
     placeholderData: (previous) => previous,
   });
   const zone = useZoneName(intl, start);
-  const count = query.data?.length;
+  const meetings = query.data?.filter((m) => overlaps(m, start, end));
+  const count = meetings?.length;
   useEffect(() => onCount(count), [count, onCount]);
 
   const label = new Intl.DateTimeFormat(intl, { day: 'numeric', month: 'short', year: 'numeric' }).formatRange(start, addDays(end, -1));
@@ -78,7 +87,8 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
         </h2>
       </div>
 
-      {query.isError && !query.data ? (
+      {query.isError ? (
+        // Also shown above data kept from before a failed refresh, so stale events are never shown silently.
         <Alert tone="error">
           <p className="font-medium">{t('meetings.error.title')}</p>
           {isApiError(query.error) && query.error.requestId ? (
@@ -90,13 +100,14 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
             {t('error.retry')}
           </Button>
         </Alert>
-      ) : query.data ? (
+      ) : null}
+      {meetings ? (
         <div aria-busy={query.isFetching || undefined}>
-          <WeekView date={start} meetings={query.data} zone={zone} />
+          <WeekView date={start} meetings={meetings} zone={zone} />
         </div>
-      ) : (
+      ) : !query.isError ? (
         <Skeleton aria-busy className="h-[42rem] w-full rounded-lg" />
-      )}
+      ) : null}
     </div>
   );
 }
