@@ -15,7 +15,7 @@ import { isPastMeeting } from '@/features/meetings/datetime';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
 import { initials } from '@/lib/initials';
-import { editMeetingHref } from '@/lib/routes';
+import { MeetingActions } from './meeting-actions';
 import { MeetingInfo } from './meeting-info';
 import { MeetingLinks } from './meeting-links';
 import { MeetingNotes } from './meeting-notes';
@@ -87,18 +87,14 @@ export function CandidateSummary({ id }: { id: string }) {
             </p>
           </div>
         </div>
-        {focused ? (
-          <Button asChild variant="outline">
-            <Link href={editMeetingHref(focused.id)}>{t('candidate.edit')}</Link>
-          </Button>
-        ) : null}
+        {focused ? <MeetingActions key={focused.id} meeting={focused} candidateId={candidate.id} /> : null}
       </header>
 
       {focused ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="flex flex-col gap-6">
             <MeetingInfo meeting={focused} upcoming={upcoming.some((m) => m.id === focused.id)} now={now} />
-            <MeetingNotes meetingId={focused.id} />
+            <MeetingNotes key={focused.id} meetingId={focused.id} />
           </div>
           <div className="flex flex-col gap-6">
             {/* The info card already shows a single upcoming meeting; list it only when there is more to reach. */}

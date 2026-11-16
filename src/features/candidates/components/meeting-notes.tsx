@@ -1,14 +1,21 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FieldError, Label, Textarea } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/toast';
 import { useCurrentUser } from '@/components/shell/use-current-user';
 import { meetingKeys, meetingsApi } from '@/features/meetings/api';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
+import { FEEDBACK_FIELD_ID } from './meeting-actions';
+
+const MAX = 5000;
 
 /** Feedback of one meeting, newest first (append-only, no author names in the contract: own notes say "You"). */
 export function MeetingNotes({ meetingId }: { meetingId: string }) {
@@ -59,7 +66,60 @@ export function MeetingNotes({ meetingId }: { meetingId: string }) {
             ))}
           </ul>
         )}
+        <AddFeedback meetingId={meetingId} />
       </CardContent>
     </Card>
+  );
+}
+
+function AddFeedback({ meetingId }: { meetingId: string }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [body, setBody] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const add = useMutation({
+    mutationFn: (text: string) => meetingsApi.addFeedback(meetingId, text),
+    onSuccess: async () => {
+      setBody('');
+      await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) });
+      toast({ tone: 'success', title: t('candidate.notes.added') });
+    },
+    onError: (e) =>
+      setError(
+        isApiError(e, 'VALIDATION_ERROR')
+          ? (e.details?.[0]?.message ?? t('candidate.notes.addError'))
+          : [t('candidate.notes.addError'), isApiError(e) && e.requestId ? `${t('error.requestId')}: ${e.requestId}` : null].filter(Boolean).join(' '),
+      ),
+  });
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const text = body.trim();
+    if (!text) return setError(t('candidate.notes.required'));
+    if (text.length > MAX) return setError(t('candidate.notes.max'));
+    setError(null);
+    add.mutate(text);
+  }
+
+  const errorId = `${FEEDBACK_FIELD_ID}-error`;
+  return (
+    <form noValidate onSubmit={submit} className="mt-2 flex flex-col gap-2">
+      <Label htmlFor={FEEDBACK_FIELD_ID}>{t('candidate.notes.add')}</Label>
+      <Textarea
+        id={FEEDBACK_FIELD_ID}
+        value={body}
+        placeholder={t('candidate.notes.placeholder')}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        onChange={(e) => setBody(e.target.value)}
+      />
+      <FieldError id={errorId}>{error ?? undefined}</FieldError>
+      <Button type="submit" className="self-end" disabled={add.isPending}>
+        {add.isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
+        {t('candidate.notes.add')}
+      </Button>
+    </form>
   );
 }

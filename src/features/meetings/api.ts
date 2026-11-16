@@ -5,6 +5,7 @@ import type {
   CreateMeetingBody,
   ListMeetingsParams,
   Meeting,
+  Feedback,
   MeetingDetail,
   Page,
   UpdateMeetingBody,
@@ -28,6 +29,9 @@ export const meetingsApi = {
   get: (id: string, signal?: AbortSignal) => api<MeetingDetail>(`/meetings/${id}`, { signal }),
   create: (body: CreateMeetingBody) => api<Meeting>('/meetings', { method: 'POST', body }),
   update: (id: string, body: UpdateMeetingBody) => api<Meeting>(`/meetings/${id}`, { method: 'PATCH', body }),
+  cancel: (id: string, version: number) => api<Meeting>(`/meetings/${id}/cancel`, { method: 'POST', body: { version } }),
+  remove: (id: string, version: number) => api<void>(`/meetings/${id}`, { method: 'DELETE', query: { version } }),
+  addFeedback: (id: string, body: string) => api<Feedback>(`/meetings/${id}/feedback`, { method: 'POST', body: { body } }),
 };
 
 export const candidatesApi = {
