@@ -119,6 +119,21 @@ describe('CandidateSummary', () => {
     expect(screen.getByRole('link', { name: /Intro call/ }).getAttribute('href')).toBe('/candidates/c1?meeting=cancelled');
   });
 
+  it('keeps a way back to the single upcoming meeting while a past one is shown', async () => {
+    setSearchParams('meeting=past');
+    mockApi({ notes: jsonResponse(200, { ...past, feedback: [] }) });
+    renderWithProviders(<CandidateSummary id="c1" />);
+    const upcoming = (await screen.findByRole('heading', { name: 'Upcoming' })).closest('div')!.parentElement!;
+    expect(within(upcoming).getByRole('link').getAttribute('href')).toBe(`/candidates/c1?meeting=${next.id}`);
+  });
+
+  it('does not repeat the single upcoming meeting in a list while it is shown', async () => {
+    mockApi({});
+    renderWithProviders(<CandidateSummary id="c1" />);
+    await screen.findByText('Upcoming meeting');
+    expect(screen.queryByRole('heading', { name: 'Upcoming' })).toBeNull();
+  });
+
   it('falls back to the latest past meeting when nothing is upcoming', async () => {
     mockApi({ detail: jsonResponse(200, { candidate: ALICE, upcoming: [], history: [past, cancelled] }), notes: jsonResponse(200, { ...past, feedback: [] }) });
     renderWithProviders(<CandidateSummary id="c1" />);

@@ -238,6 +238,26 @@ describe('EditMeeting', () => {
     expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, status: 'CONFIRMED' });
   });
 
+  it('refreshes the summary of both the old and the new candidate after saving', async () => {
+    const bo: CandidateSummary = { ...ALICE, id: 'c-bo', name: 'Bo' };
+    mockApi({
+      [detail]: () => jsonResponse(200, existing),
+      [`PATCH /meetings/${existing.id}`]: () => jsonResponse(200, { ...existing, candidate: bo, version: 5 }),
+    });
+    const { client } = renderWithProviders(<EditMeeting id={existing.id} />);
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await screen.findByRole('heading', { name: 'Edit meeting' });
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'CONFIRMED');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
+    const keys = invalidate.mock.calls.map(([filters]) => JSON.stringify(filters?.queryKey));
+    expect(keys).toEqual(expect.arrayContaining([
+      JSON.stringify(['meetings']),
+      JSON.stringify(['candidates', 'detail', ALICE.id]),
+      JSON.stringify(['candidates', 'detail', 'c-bo']),
+    ]));
+  });
+
   it('shows an overnight end as its own choice, keeps it, and clears it only on request', async () => {
     const overnight = { ...existing, endAt: fromLocalParts('2030-05-11', '01:00') };
     mockApi({

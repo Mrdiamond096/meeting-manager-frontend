@@ -101,7 +101,8 @@ export function CandidateSummary({ id }: { id: string }) {
             <MeetingNotes meetingId={focused.id} />
           </div>
           <div className="flex flex-col gap-6">
-            {upcoming.length > 1 ? (
+            {/* The info card already shows a single upcoming meeting; list it only when there is more to reach. */}
+            {upcoming.length > 1 || (upcoming.length === 1 && upcoming[0].id !== focused.id) ? (
               <MeetingLinks
                 title={t('candidate.upcoming')}
                 meetings={upcoming}
