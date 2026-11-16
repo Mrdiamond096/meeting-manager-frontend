@@ -5,6 +5,7 @@ export type MeetingType = 'ONSITE' | 'ONLINE';
 export type Provider = 'ZOOM' | 'GOOGLE_MEET' | 'OTHER';
 
 export const MEETING_STATUSES: readonly MeetingStatus[] = ['CONFIRMED', 'PENDING', 'CANCELLED'];
+export const PROVIDERS: readonly Provider[] = ['ZOOM', 'GOOGLE_MEET', 'OTHER'];
 
 export interface CandidateSummary {
   id: string;
@@ -43,4 +44,17 @@ export interface ListMeetingsParams {
   status?: MeetingStatus;
   from?: string;
   mine?: boolean;
+}
+
+/** POST /meetings body. Candidate: an existing id, or a new one created in the same transaction, or neither. */
+export interface CreateMeetingBody {
+  title: string;
+  description: string;
+  dueDate: string;
+  endAt?: string;
+  status: Exclude<MeetingStatus, 'CANCELLED'>;
+  meetingType?: MeetingType;
+  provider?: Provider;
+  candidateId?: string;
+  candidate?: { name: string; position: string };
 }

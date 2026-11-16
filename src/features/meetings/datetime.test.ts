@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMeetingWhen, isPastMeeting } from './datetime';
+import { formatMeetingWhen, fromLocalParts, isPastMeeting, toLocalParts } from './datetime';
 import type { Meeting } from './types';
 
 const meeting: Pick<Meeting, 'status' | 'dueDate' | 'endAt'> = {
@@ -9,6 +9,10 @@ const meeting: Pick<Meeting, 'status' | 'dueDate' | 'endAt'> = {
 };
 
 describe('datetime', () => {
+  it('round-trips local date + time through an instant', () => {
+    expect(toLocalParts(fromLocalParts('2030-05-10', '09:45'))).toEqual({ date: '2030-05-10', time: '09:45' });
+  });
+
   it('marks a meeting past only after its end, never cancelled ones', () => {
     const now = new Date(meeting.endAt!);
     expect(isPastMeeting(meeting, new Date(now.getTime() - 1))).toBe(false);
