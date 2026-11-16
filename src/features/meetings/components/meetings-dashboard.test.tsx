@@ -175,12 +175,20 @@ describe('MeetingsDashboard', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Alice Tan' })).toBeTruthy());
   });
 
-  it('links each card to its meeting and the header to the booking form', async () => {
+  it('links each card to its candidate summary and the header to the booking form', async () => {
     const m = meeting();
     fetchMock.mockResolvedValue(page([m]));
     renderWithProviders(<MeetingsDashboard />);
     await screen.findByRole('heading', { name: 'Alice Tan' });
-    expect(screen.getByRole('link', { name: /View details/ }).getAttribute('href')).toBe(`/meetings/${m.id}/edit`);
+    expect(screen.getByRole('link', { name: /View details/ }).getAttribute('href')).toBe(`/candidates/c1?meeting=${m.id}`);
     expect(screen.getByRole('link', { name: 'Schedule meeting' }).getAttribute('href')).toBe('/meetings/new');
+  });
+
+  it('opens the edit form for a meeting without a candidate, which has no summary', async () => {
+    const m = meeting({ title: 'Hiring sync', candidate: null });
+    fetchMock.mockResolvedValue(page([m]));
+    renderWithProviders(<MeetingsDashboard />);
+    await screen.findByRole('heading', { name: 'Hiring sync' });
+    expect(screen.getByRole('link', { name: /View details/ }).getAttribute('href')).toBe(`/meetings/${m.id}/edit`);
   });
 });

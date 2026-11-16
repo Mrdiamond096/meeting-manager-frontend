@@ -8,8 +8,11 @@ export const SESSION_COOKIE = 'sid';
 
 export const newMeetingHref = '/meetings/new';
 export const editMeetingHref = (id: string) => `/meetings/${id}/edit`;
-/** C3 (Candidate Summary) will point this at the detail page; until then a card opens the edit form. */
-export const meetingHref = editMeetingHref;
+export const candidateHref = (id: string, meetingId?: string) =>
+  meetingId ? `/candidates/${id}?meeting=${meetingId}` : `/candidates/${id}`;
+/** A meeting opens its candidate's summary; one without a candidate has no summary, so it opens the edit form. */
+export const meetingHref = (m: { id: string; candidate: { id: string } | null }) =>
+  m.candidate ? candidateHref(m.candidate.id, m.id) : editMeetingHref(m.id);
 
 export function loginRedirect(pathname: string, search = ''): string {
   const next = `${pathname}${search}`;

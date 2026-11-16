@@ -112,7 +112,12 @@ export function MeetingForm({ meeting, onReload }: MeetingFormProps) {
         router.push('/');
         return;
       }
-      await queryClient.invalidateQueries({ queryKey: meetingKeys.all });
+      // The candidate summary caches meetings too: refresh the old and the new candidate when it changed.
+      const candidateIds = new Set([meeting?.candidate?.id, saved.candidate?.id].filter((id) => id !== undefined));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: meetingKeys.all }),
+        ...[...candidateIds].map((id) => queryClient.invalidateQueries({ queryKey: candidateKeys.detail(id) })),
+      ]);
       toast({ tone: 'success', title: t(editing ? 'meetingForm.saved.edit' : 'meetingForm.saved.create') });
       router.push('/');
     },
