@@ -37,12 +37,20 @@ export function OtpInput({ value, onChange, label, invalid, disabled, autoFocus 
     else if (e.key === 'ArrowRight') focus(i + 1);
   }
 
-  function onPaste(e: ClipboardEvent<HTMLInputElement>) {
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, LENGTH);
+  /** Several digits at once (paste, SMS autofill): a full code starts at box 1, a partial one at box `i`. */
+  function fill(i: number, raw: string) {
+    const start = raw.length >= LENGTH ? 0 : i;
+    const next = digits.map((d) => d || EMPTY);
+    raw.slice(0, LENGTH - start).split('').forEach((d, k) => (next[start + k] = d));
+    onChange(next.join('').trimEnd());
+    focus(start + Math.min(raw.length, LENGTH - start));
+  }
+
+  function onPaste(i: number, e: ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '');
     if (!pasted) return;
     e.preventDefault();
-    onChange(pasted);
-    focus(pasted.length);
+    fill(i, pasted);
   }
 
   return (
@@ -56,15 +64,18 @@ export function OtpInput({ value, onChange, label, invalid, disabled, autoFocus 
           value={digit}
           inputMode="numeric"
           autoComplete={i === 0 ? 'one-time-code' : 'off'}
-          maxLength={1}
+          maxLength={LENGTH}
           disabled={disabled}
           autoFocus={autoFocus && i === 0}
           aria-label={`${label} ${i + 1}`}
           aria-invalid={invalid || undefined}
-          onPaste={onPaste}
+          onPaste={(e) => onPaste(i, e)}
           onKeyDown={(e) => onKeyDown(i, e)}
           onChange={(e) => {
-            const d = e.target.value.replace(/\D/g, '').slice(-1);
+            const raw = e.target.value.replace(/\D/g, '');
+            // One keystroke adds one digit to what the box held; more than that is autofill.
+            if (raw.length > (digit ? 2 : 1)) return fill(i, raw);
+            const d = raw.slice(-1);
             setDigit(i, d);
             if (d) focus(i + 1);
           }}
