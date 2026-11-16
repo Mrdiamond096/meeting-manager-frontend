@@ -32,7 +32,8 @@ function useDashboardFilters() {
   const pathname = usePathname();
   const params = useSearchParams();
   const status = toStatus(params.get('status'));
-  const scope: Scope = params.get('mine') === 'true' ? 'mine' : 'all';
+  // Mine is the default (ADR-014); Everyone is kept in the URL as mine=false.
+  const scope: Scope = params.get('mine') === 'false' ? 'all' : 'mine';
   const page = toPage(params.get('page'));
 
   function update(next: { status?: StatusFilter; scope?: Scope; page?: number }) {
@@ -41,7 +42,7 @@ function useDashboardFilters() {
     const sc = next.scope ?? scope;
     const p = next.page ?? 1; // any filter change goes back to page 1
     if (s !== 'ALL') q.set('status', s);
-    if (sc === 'mine') q.set('mine', 'true');
+    if (sc === 'all') q.set('mine', 'false');
     if (p > 1) q.set('page', String(p));
     const qs = q.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
@@ -73,7 +74,7 @@ export function MeetingsDashboard() {
     if (data && data.items.length === 0 && data.total > 0 && page > lastPage) update({ page: lastPage });
   }, [data, page, lastPage]);
 
-  const filtered = status !== 'ALL' || scope === 'mine';
+  const filtered = status !== 'ALL';
 
   return (
     <section className="flex flex-col gap-6" aria-labelledby="meetings-heading">

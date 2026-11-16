@@ -58,7 +58,7 @@ describe('MeetingsDashboard', () => {
     expect(screen.getByText('2 meetings')).toBeTruthy();
   });
 
-  it('asks for upcoming meetings from the start of today, 12 per page', async () => {
+  it('asks for upcoming meetings from the start of today, 12 per page, mine by default (ADR-014)', async () => {
     fetchMock.mockResolvedValue(page([meeting()]));
     renderWithProviders(<MeetingsDashboard />);
     await screen.findByRole('heading', { name: 'Alice Tan' });
@@ -68,7 +68,35 @@ describe('MeetingsDashboard', () => {
     const from = new Date(url.searchParams.get('from')!);
     expect(from.getHours()).toBe(0);
     expect(url.searchParams.has('status')).toBe(false);
+    expect(url.searchParams.get('mine')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'Mine' }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('shows everyone\'s meetings only for an explicit mine=false', async () => {
+    setSearchParams('mine=false');
+    fetchMock.mockResolvedValue(page([meeting()]));
+    renderWithProviders(<MeetingsDashboard />);
+    await screen.findByRole('heading', { name: 'Alice Tan' });
+    const url = new URL(String(fetchMock.mock.calls[0]![0]), 'http://localhost');
     expect(url.searchParams.has('mine')).toBe(false);
+    expect(screen.getByRole('radio', { name: 'Everyone' }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('writes Everyone as mine=false and Mine as no parameter', async () => {
+    fetchMock.mockResolvedValue(page([meeting()]));
+    renderWithProviders(<MeetingsDashboard />);
+    await screen.findByRole('heading', { name: 'Alice Tan' });
+    await userEvent.click(screen.getByRole('radio', { name: 'Everyone' }));
+    expect(router.replace).toHaveBeenLastCalledWith('/?mine=false');
+  });
+
+  it('goes back to Mine without a parameter', async () => {
+    setSearchParams('mine=false&status=PENDING');
+    fetchMock.mockResolvedValue(page([meeting({ status: 'PENDING' })]));
+    renderWithProviders(<MeetingsDashboard />);
+    await screen.findByRole('heading', { name: 'Alice Tan' });
+    await userEvent.click(screen.getByRole('radio', { name: 'Mine' }));
+    expect(router.replace).toHaveBeenLastCalledWith('/?status=PENDING');
   });
 
   it('marks today with a label and a finished meeting as Past', async () => {
