@@ -1,12 +1,10 @@
-import { getT } from '@/i18n/server';
+import { Suspense } from 'react';
+import { MeetingsDashboard } from '@/features/meetings/components/meetings-dashboard';
 
-// Placeholder until C2 (dashboard).
-export default async function DashboardPage() {
-  const t = await getT();
+export default function DashboardPage() {
   return (
-    <section>
-      <h1 className="text-2xl font-semibold">Upcoming Meetings</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{t('app.title')}</p>
-    </section>
+    <Suspense>
+      <MeetingsDashboard />
+    </Suspense>
   );
 }

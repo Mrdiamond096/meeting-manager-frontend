@@ -14,6 +14,7 @@ export const setSearchParams = (query: string) => {
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
   useSearchParams: () => searchParams,
+  usePathname: () => '/',
 }));
 
 export function renderWithProviders(ui: ReactElement) {
