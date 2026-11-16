@@ -51,8 +51,7 @@ describe('Calendar week view', () => {
     expect(await screen.findByText('0 meetings this week')).toBeTruthy();
     const q = requests[0]!.searchParams;
     expect(q.get('view')).toBe('range');
-    // One day early, to catch meetings that start on Sunday night and run into Monday.
-    expect(q.get('from')).toBe(new Date(2026, 10, 15).toISOString());
+    expect(q.get('from')).toBe(new Date(2026, 10, 16).toISOString());
     expect(q.get('to')).toBe(new Date(2026, 10, 23).toISOString());
     expect(q.get('mine')).toBe('true');
     expect(q.has('page')).toBe(false);
@@ -78,9 +77,10 @@ describe('Calendar week view', () => {
     expect(screen.getByText('2 meetings this week')).toBeTruthy();
   });
 
-  it('shows a meeting from Sunday night on Monday, but not meetings that end before the week', async () => {
+  it('shows meetings that started before Monday on the days they still run, but not ones that ended before', async () => {
     mockRange([
-      meeting('night', { dueDate: at(15, 23), endAt: at(16, 1) }),
+      // The API returns overlapping meetings; this one runs from Saturday night into Monday.
+      meeting('night', { dueDate: at(14, 23), endAt: at(16, 1) }),
       meeting('sunday', { dueDate: at(15, 10), endAt: at(15, 11) }),
     ]);
     renderWithProviders(<MeetingsDashboard />);

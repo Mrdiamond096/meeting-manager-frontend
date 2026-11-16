@@ -14,8 +14,6 @@ import { addDays, startOfWeek } from '../dates';
 import { DEFAULT_MINUTES } from '../layout';
 import { WeekView } from './week-view';
 
-const OVERNIGHT_DAYS = 1;
-
 const endOf = (m: Meeting) => new Date(m.endAt ?? new Date(new Date(m.dueDate).getTime() + DEFAULT_MINUTES * 60_000));
 const overlaps = (m: Meeting, from: Date, to: Date) => new Date(m.dueDate) < to && endOf(m) > from;
 
@@ -51,9 +49,8 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
   const start = startOfWeek(date);
   const end = addDays(start, 7);
   const params: RangeMeetingsParams = {
-    // The API filters by start time, so a meeting from Sunday night into Monday starts in the previous week.
-    // Asking from the day before catches overnight meetings (up to 24h); longer ones need an overlap filter in the API.
-    from: addDays(start, -OVERNIGHT_DAYS).toISOString(),
+    // The API returns meetings that overlap [from, to), including ones that started before Monday (contract: range view).
+    from: start.toISOString(),
     to: end.toISOString(),
     ...(status ? { status } : {}),
     ...(mine ? { mine: true } : {}),
@@ -64,6 +61,7 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
     placeholderData: (previous) => previous,
   });
   const zone = useZoneName(intl, start);
+  // Same overlap rule as the API; also keeps a previous week's data from leaking in while the next one loads.
   const meetings = query.data?.filter((m) => overlaps(m, start, end));
   const count = meetings?.length;
   useEffect(() => onCount(count), [count, onCount]);
