@@ -1,6 +1,27 @@
 import type { Locale } from '@/i18n/dictionaries';
 import type { Meeting } from './types';
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** 00:00 … 23:45 in 15-minute steps (design §6.3). */
+export const TIME_SLOTS: string[] = Array.from({ length: 96 }, (_, i) => `${pad(Math.floor(i / 4))}:${pad((i % 4) * 15)}`);
+
+/** Local calendar date (`YYYY-MM-DD`) and time (`HH:mm`) of an instant in the browser timezone (ADR-005). */
+export function toLocalParts(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+}
+
+/** Browser-local date + time → UTC ISO instant the API accepts. */
+export function fromLocalParts(date: string, time: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const [hh, mm] = time.split(':').map(Number);
+  return new Date(y!, m! - 1, d!, hh, mm).toISOString();
+}
+
 export const startOfLocalDay = (now: Date) => new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
 export function isSameLocalDay(iso: string, now: Date): boolean {
