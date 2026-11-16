@@ -10,19 +10,25 @@ import { meetingKeys, meetingsApi } from '@/features/meetings/api';
 import type { Meeting, MeetingStatus, RangeMeetingsParams } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
-import { addDays, startOfWeek } from '../dates';
-import { DEFAULT_MINUTES } from '../layout';
+import { Segmented } from '@/components/ui/segmented';
+import { addDays, addMonths, monthGrid, startOfMonth, startOfWeek } from '../dates';
+import { endOf } from '../layout';
+import { MonthView } from './month-view';
 import { WeekView } from './week-view';
 
-const endOf = (m: Meeting) => new Date(m.endAt ?? new Date(new Date(m.dueDate).getTime() + DEFAULT_MINUTES * 60_000));
 const overlaps = (m: Meeting, from: Date, to: Date) => new Date(m.dueDate) < to && endOf(m) > from;
+
+export type CalendarMode = 'week' | 'month';
 
 interface Props {
   date: Date;
+  mode: CalendarMode;
+  onModeChange: (mode: CalendarMode) => void;
   status?: MeetingStatus;
   mine: boolean;
-  onDateChange: (date: Date) => void;
-  onCount: (count: number | undefined) => void;
+  onDateChange: (date: Date, mode?: CalendarMode) => void;
+  /** "n meetings this week" / "n meetings in November" for the page header. */
+  onSummary: (summary: string | undefined) => void;
 }
 
 /** Short zone name of the browser (e.g. GMT+7); read after mount so the server render does not guess it. */
@@ -30,7 +36,7 @@ function useZoneName(intl: string, at: Date) {
   const [zone, setZone] = useState<string>();
   useEffect(() => {
     setZone(new Intl.DateTimeFormat(intl, { timeZoneName: 'short' }).formatToParts(at).find((p) => p.type === 'timeZoneName')?.value);
-  }, [intl, at]);
+  }, [intl, at.getTime()]);
   return zone;
 }
 
@@ -44,10 +50,12 @@ export function MeetingsCalendar(props: Props) {
   return mounted ? <Calendar {...props} /> : <Skeleton aria-busy className="h-[42rem] w-full rounded-lg" />;
 }
 
-function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
+function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSummary }: Props) {
   const { t, intl } = useI18n();
-  const start = startOfWeek(date);
-  const end = addDays(start, 7);
+  const month = mode === 'month';
+  // Week: Mon–Mon. Month: the 42 days of the 6×7 grid (the API's maximum range).
+  const start = month ? monthGrid(date)[0]! : startOfWeek(date);
+  const end = addDays(start, month ? 42 : 7);
   const params: RangeMeetingsParams = {
     // The API returns meetings that overlap [from, to), including ones that started before Monday (contract: range view).
     from: start.toISOString(),
@@ -61,12 +69,21 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
     placeholderData: (previous) => previous,
   });
   const zone = useZoneName(intl, start);
-  // Same overlap rule as the API; also keeps a previous week's data from leaking in while the next one loads.
+  // Same overlap rule as the API; also keeps a previous range's data from leaking in while the next one loads.
   const meetings = query.data?.filter((m) => overlaps(m, start, end));
-  const count = meetings?.length;
-  useEffect(() => onCount(count), [count, onCount]);
+  const monthName = new Intl.DateTimeFormat(intl, { month: 'long' }).format(date);
+  // The month header counts the meetings of the month itself, not the grid's days from the months around it.
+  const count = month
+    ? meetings?.filter((m) => overlaps(m, startOfMonth(date), addMonths(date, 1))).length
+    : meetings?.length;
+  const summary =
+    count === undefined ? undefined : month ? t('calendar.countMonth').replace('{n}', String(count)).replace('{month}', monthName) : t('calendar.count').replace('{n}', String(count));
+  useEffect(() => onSummary(summary), [summary, onSummary]);
 
-  const label = new Intl.DateTimeFormat(intl, { day: 'numeric', month: 'short', year: 'numeric' }).formatRange(start, addDays(end, -1));
+  const label = month
+    ? new Intl.DateTimeFormat(intl, { month: 'long', year: 'numeric' }).format(date)
+    : new Intl.DateTimeFormat(intl, { day: 'numeric', month: 'short', year: 'numeric' }).formatRange(start, addDays(end, -1));
+  const step = (n: number) => onDateChange(month ? addMonths(date, n) : addDays(start, 7 * n));
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,15 +91,25 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
         <Button variant="outline" size="sm" onClick={() => onDateChange(new Date())}>
           {t('calendar.today')}
         </Button>
-        <Button variant="ghost" size="icon" aria-label={t('calendar.prevWeek')} onClick={() => onDateChange(addDays(start, -7))}>
+        <Button variant="ghost" size="icon" aria-label={t(month ? 'calendar.prevMonth' : 'calendar.prevWeek')} onClick={() => step(-1)}>
           <ChevronLeft aria-hidden />
         </Button>
-        <Button variant="ghost" size="icon" aria-label={t('calendar.nextWeek')} onClick={() => onDateChange(addDays(start, 7))}>
+        <Button variant="ghost" size="icon" aria-label={t(month ? 'calendar.nextMonth' : 'calendar.nextWeek')} onClick={() => step(1)}>
           <ChevronRight aria-hidden />
         </Button>
         <h2 aria-live="polite" className="tabular text-lg font-semibold">
           {label}
         </h2>
+        <Segmented<CalendarMode>
+          className="ml-auto"
+          label={t('calendar.mode')}
+          value={mode}
+          onChange={onModeChange}
+          options={[
+            { value: 'week', label: t('calendar.week') },
+            { value: 'month', label: t('calendar.month') },
+          ]}
+        />
       </div>
 
       {query.isError ? (
@@ -101,7 +128,11 @@ function Calendar({ date, status, mine, onDateChange, onCount }: Props) {
       ) : null}
       {meetings ? (
         <div aria-busy={query.isFetching || undefined}>
-          <WeekView date={start} meetings={meetings} zone={zone} />
+          {month ? (
+            <MonthView date={date} meetings={meetings} onShowWeek={(day) => onDateChange(day, 'week')} />
+          ) : (
+            <WeekView date={start} meetings={meetings} zone={zone} />
+          )}
         </div>
       ) : !query.isError ? (
         <Skeleton aria-busy className="h-[42rem] w-full rounded-lg" />

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MeetingsCalendar } from '@/features/calendar/components/meetings-calendar';
+import { MeetingsCalendar, type CalendarMode } from '@/features/calendar/components/meetings-calendar';
 import { parseDateParam, toDateParam } from '@/features/calendar/dates';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
@@ -41,14 +41,16 @@ function useDashboardFilters() {
   // Calendar state lives in the URL too: /?view=calendar&date=2026-11-16 (ADR-014, deep-linkable).
   const view: View = params.get('view') === 'calendar' ? 'calendar' : 'list';
   const dateParam = params.get('date');
+  const mode: CalendarMode = params.get('mode') === 'month' ? 'month' : 'week';
 
-  function update(next: { status?: StatusFilter; scope?: Scope; page?: number; view?: View; date?: Date }) {
+  function update(next: { status?: StatusFilter; scope?: Scope; page?: number; view?: View; date?: Date; mode?: CalendarMode }) {
     const q = new URLSearchParams();
     const s = next.status ?? status;
     const sc = next.scope ?? scope;
     const v = next.view ?? view;
     const p = next.page ?? 1; // any filter change goes back to page 1
     if (v === 'calendar') q.set('view', 'calendar');
+    if (v === 'calendar' && (next.mode ?? mode) === 'month') q.set('mode', 'month');
     const d = next.date ? toDateParam(next.date) : v === 'calendar' ? dateParam : null;
     if (v === 'calendar' && d) q.set('date', d);
     if (s !== 'ALL') q.set('status', s);
@@ -57,14 +59,14 @@ function useDashboardFilters() {
     const qs = q.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
-  return { status, scope, page, view, dateParam, update };
+  return { status, scope, page, view, mode, dateParam, update };
 }
 
 export function MeetingsDashboard() {
   const { t } = useI18n();
-  const { status, scope, page, view, dateParam, update } = useDashboardFilters();
-  const [weekCount, setWeekCount] = useState<number>();
-  const onWeekCount = useCallback((n: number | undefined) => setWeekCount(n), []);
+  const { status, scope, page, view, mode, dateParam, update } = useDashboardFilters();
+  const [calendarSummary, setCalendarSummary] = useState<string>();
+  const onCalendarSummary = useCallback((summary: string | undefined) => setCalendarSummary(summary), []);
   // Fixed per visit so the query key stays stable; "upcoming" = from the start of today (local).
   const [now] = useState(() => new Date());
   const params: ListMeetingsParams = {
@@ -97,9 +99,7 @@ export function MeetingsDashboard() {
             {t('meetings.title')}
           </h1>
           {view === 'calendar' ? (
-            weekCount !== undefined ? (
-              <p className="tabular mt-1 text-sm text-muted-foreground">{t('calendar.count').replace('{n}', String(weekCount))}</p>
-            ) : null
+            calendarSummary ? <p className="tabular mt-1 text-sm text-muted-foreground">{calendarSummary}</p> : null
           ) : data ? (
             <p className="tabular mt-1 text-sm text-muted-foreground">{t('meetings.count').replace('{n}', String(data.total))}</p>
           ) : null}
@@ -147,8 +147,10 @@ export function MeetingsDashboard() {
           date={parseDateParam(dateParam, now)}
           status={status === 'ALL' ? undefined : status}
           mine={scope === 'mine'}
-          onDateChange={(date) => update({ date })}
-          onCount={onWeekCount}
+          mode={mode}
+          onModeChange={(m) => update({ mode: m })}
+          onDateChange={(date, m) => update({ date, mode: m })}
+          onSummary={onCalendarSummary}
         />
       ) : query.isError && !data ? (
         <Alert tone="error">

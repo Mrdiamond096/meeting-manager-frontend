@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Meeting } from '@/features/meetings/types';
-import { addDays, parseDateParam, startOfWeek, toDateParam, weekDays } from './dates';
-import { layoutDay } from './layout';
+import { addDays, monthGrid, parseDateParam, startOfWeek, toDateParam, weekDays } from './dates';
+import { layoutDay, meetingsOnDay } from './layout';
 
 const day = new Date(2026, 10, 16); // Mon 16 Nov 2026, local
 const at = (h: number, m = 0, d = day) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).toISOString();
@@ -64,5 +64,22 @@ describe('layoutDay', () => {
     expect(layoutDay([overnight], day)[0]).toMatchObject({ top: 1380, height: 60 });
     expect(layoutDay([overnight], addDays(day, 1))[0]).toMatchObject({ top: 0, height: 60 });
     expect(layoutDay([overnight], addDays(day, 2))).toEqual([]);
+  });
+});
+
+describe('month', () => {
+  it('builds a 42-day grid from the Monday on or before the 1st', () => {
+    const grid = monthGrid(new Date(2026, 10, 17)); // November 2026 starts on a Sunday
+    expect(grid).toHaveLength(42);
+    expect(toDateParam(grid[0]!)).toBe('2026-10-26');
+    expect(toDateParam(grid[41]!)).toBe('2026-12-06');
+  });
+
+  it('lists the meetings of a day by start time, including one still running from the night before', () => {
+    const list = meetingsOnDay(
+      [meeting('late', at(15), at(16)), meeting('early', at(9), at(10)), meeting('night', at(23, 0, addDays(day, -1)), at(1)), meeting('other', at(9, 0, addDays(day, 1)), null)],
+      day,
+    );
+    expect(list.map((m) => m.id)).toEqual(['night', 'early', 'late']);
   });
 });

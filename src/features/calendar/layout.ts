@@ -16,7 +16,7 @@ export interface PlacedEvent {
   columns: number;
 }
 
-const endOf = (m: Meeting) =>
+export const endOf = (m: Meeting) =>
   m.endAt ? new Date(m.endAt) : new Date(new Date(m.dueDate).getTime() + DEFAULT_MINUTES * 60_000);
 
 /** Events of one local day, positioned in minutes; overlapping events share the width in columns. */
@@ -52,3 +52,9 @@ export function layoutDay(meetings: Meeting[], day: Date): PlacedEvent[] {
   flush();
   return placed;
 }
+
+/** Meetings that overlap the local day, by start time (month cells list them as "time · name"). */
+export const meetingsOnDay = (meetings: Meeting[], day: Date) =>
+  meetings
+    .filter((m) => new Date(m.dueDate) < addDays(day, 1) && endOf(m) > day)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id));
