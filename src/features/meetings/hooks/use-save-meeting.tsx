@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useActionNavigation } from '@/lib/use-action-navigation';
 import { useState, type ReactNode } from 'react';
 import type { UseFormSetError } from 'react-hook-form';
 import { useToast } from '@/components/ui/toast';
@@ -19,7 +19,7 @@ interface SaveMeetingOptions {
 
 export function useSaveMeeting({ meeting, initial, setError }: SaveMeetingOptions) {
   const { t } = useI18n();
-  const router = useRouter();
+  const router = useActionNavigation();
   const toast = useToast();
   const queryClient = useQueryClient();
   const editing = Boolean(meeting);
@@ -73,5 +73,5 @@ export function useSaveMeeting({ meeting, initial, setError }: SaveMeetingOption
     },
   });
 
-  return { save, formError, conflict, setConflict };
+  return { save, formError, conflict, setConflict, isNavigating: router.isNavigating };
 }

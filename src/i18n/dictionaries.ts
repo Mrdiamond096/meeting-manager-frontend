@@ -4,6 +4,9 @@ export const DEFAULT_LOCALE: Locale = 'en';
 export const LOCALE_COOKIE = 'lang';
 
 const en = {
+  'loading.page': 'Opening page…',
+  'loading.data': 'Loading updates…',
+  'loading.logout': 'Logging out…',
   'app.title': 'Candidate Meeting Scheduler',
   'shell.language': 'Language',
   'shell.theme': 'Theme',
@@ -217,6 +220,9 @@ const en = {
 export type MessageKey = keyof typeof en;
 
 const th: Record<MessageKey, string> = {
+  'loading.page': 'กำลังเปิดหน้า…',
+  'loading.data': 'กำลังโหลดข้อมูล…',
+  'loading.logout': 'กำลังออกจากระบบ…',
   'app.title': 'ระบบนัดสัมภาษณ์ผู้สมัคร',
   'shell.language': 'ภาษา',
   'shell.theme': 'ธีม',

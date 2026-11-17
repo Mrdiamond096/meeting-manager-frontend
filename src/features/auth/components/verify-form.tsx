@@ -1,13 +1,14 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { ActionLink as Link } from '@/components/ui/action-link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { currentUserKey } from '@/components/shell/use-current-user';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { useI18n } from '@/i18n/i18n-provider';
+import { useActionNavigation } from '@/lib/use-action-navigation';
 import { authApi } from '../api';
 import { challengeEmail, moveChallengeEmail } from '../challenge-email';
 import { toAuthError } from '../errors';
@@ -19,7 +20,7 @@ import { OtpInput } from './otp-input';
 export function VerifyForm() {
   const { t } = useI18n();
   const toast = useToast();
-  const router = useRouter();
+  const router = useActionNavigation();
   const queryClient = useQueryClient();
   const params = useSearchParams();
   const challengeId = params.get('c');
@@ -83,25 +84,28 @@ export function VerifyForm() {
           value={code}
           onChange={setCode}
           invalid={formatError || verify.isError}
-          disabled={locked}
+          disabled={locked || verify.isPending || resend.isPending || router.isNavigating}
           autoFocus
         />
         <DemoOtpHint />
-        <Button type="submit" disabled={verify.isPending || locked}>
+        <Button type="submit" loading={verify.isPending || router.isNavigating} disabled={locked || resend.isPending}>
           {t('auth.verify.submit')}
         </Button>
         <div className="flex justify-between text-sm">
           <Link href="/login" className="text-primary hover:underline">
             {t('auth.backToLogin')}
           </Link>
-          <button
+          <Button
+            variant="link"
+            size="sm"
             type="button"
-            className="text-primary hover:underline disabled:opacity-50"
-            disabled={resend.isPending}
+            className="h-auto rounded-none p-0 font-normal text-primary hover:underline disabled:opacity-50"
+            loading={resend.isPending}
+            disabled={verify.isPending || locked || router.isNavigating}
             onClick={() => resend.mutate({ challengeId })}
           >
             {t('auth.verify.resend')}
-          </button>
+          </Button>
         </div>
       </form>
     </AuthCard>

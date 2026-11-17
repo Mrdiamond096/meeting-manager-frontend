@@ -1,7 +1,8 @@
 'use client';
 
-import { LogOut } from 'lucide-react';
-import Link from 'next/link';
+import { ActionStatus } from '@/components/ui/action-status';
+import { Loader2, LogOut } from 'lucide-react';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { useState } from 'react';
 import {
   DropdownMenu,
@@ -24,14 +25,21 @@ function initials(email: string | undefined): string {
 }
 
 export function LanguageSwitch() {
-  const { locale, setLocale, t } = useI18n();
+  const { locale, setLocale, isChangingLocale, t } = useI18n();
   return (
     <div role="group" aria-label={t('shell.language')} className="flex items-center gap-1 text-sm">
+      {isChangingLocale ? (
+        <span role="status" className="inline-flex">
+          <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+          <span className="sr-only">{t('loading.page')}</span>
+        </span>
+      ) : null}
       {LOCALES.map((l, i) => (
         <span key={l} className="flex items-center gap-1">
           {i > 0 ? <span className="text-muted-foreground">/</span> : null}
           <button
             type="button"
+            disabled={isChangingLocale}
             aria-pressed={locale === l}
             onClick={() => setLocale(l)}
             className={cn(
@@ -53,6 +61,7 @@ export function AppHeader() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function logout() {
+    if (loggingOut) return;
     setLoggingOut(true);
     try {
       await api('/auth/logout', { method: 'POST' });
@@ -64,15 +73,20 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card">
       <div className="flex h-16 items-center gap-3 px-4 md:px-6">
-        <Link href="/" className="flex items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Link
+          href="/"
+          className="flex items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <BrandLogo />
           <span className="hidden text-sm font-semibold sm:inline">{t('app.title')}</span>
         </Link>
         <div className="flex-1" />
+        {loggingOut ? <ActionStatus message="loading.logout" /> : null}
         <LanguageSwitch />
         <ThemeSwitch />
         <DropdownMenu>
           <DropdownMenuTrigger
+            disabled={loggingOut}
             aria-label={t('shell.userMenu')}
             className="flex size-8 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >

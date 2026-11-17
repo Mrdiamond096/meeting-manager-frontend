@@ -1,11 +1,13 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { focusManager } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { jsonResponse, renderWithProviders, router } from '@/test/render';
 import { fromLocalParts } from '../datetime';
 import type { CandidateSummary, Meeting } from '../types';
 import { EditMeeting } from './edit-meeting';
 import { MeetingForm } from './meeting-form';
+import NewMeetingPage from '@/app/(app)/meetings/new/page';
 
 let fetchMock: MockInstance<typeof fetch>;
 
@@ -38,7 +40,7 @@ const calls: Call[] = [];
 const requestOf = (c: Call) => c.body;
 
 /** Routes fetch by "METHOD path"; unknown routes fail the test loudly. */
-function mockApi(routes: Record<string, (call: Call) => Response>) {
+function mockApi(routes: Record<string, (call: Call) => Response | Promise<Response>>) {
   fetchMock.mockImplementation(async (input, init) => {
     const url = new URL(String(input), 'http://localhost');
     const call: Call = {
@@ -367,5 +369,66 @@ describe('EditMeeting', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
     expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, description: 'note' });
+  });
+});
+
+describe('Cancel meeting creation', () => {
+  it('returns to the same calendar even when the form was opened directly or refreshed', async () => {
+    const returnTo = '/?view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false';
+    const page = await NewMeetingPage({ searchParams: Promise.resolve({ date: '2026-11-26', start: '09:00', returnTo }) });
+    renderWithProviders(page);
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(router.push).toHaveBeenCalledWith(returnTo);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('returns to the dashboard for ordinary creation', async () => {
+    renderWithProviders(await NewMeetingPage({ searchParams: Promise.resolve({}) }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(router.push).toHaveBeenCalledWith('/');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('Edit form refresh feedback', () => {
+  it('keeps unsaved edits and Save available when window focus changes, even if the cache was invalidated', async () => {
+    mockApi({ [`GET /meetings/${existing.id}`]: () => jsonResponse(200, existing) });
+    const { client } = renderWithProviders(<EditMeeting id={existing.id} />);
+    await userEvent.type(await screen.findByLabelText('Title'), ' (mine)');
+    try {
+      await act(async () => {
+        await client.invalidateQueries({ queryKey: ['meetings'], refetchType: 'none' });
+        focusManager.setFocused(false);
+        focusManager.setFocused(true);
+      });
+      expect(calls.filter((c) => c.method === 'GET')).toHaveLength(1);
+      expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe(`${existing.title} (mine)`);
+      expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
+      expect(screen.queryByText('Loading updates…')).toBeNull();
+    } finally {
+      focusManager.setFocused(undefined);
+    }
+  });
+
+  it('shows progress and disables Save only during the explicit conflict reload', async () => {
+    let reads = 0;
+    let resolve!: (value: Response) => void;
+    mockApi({
+      [`GET /meetings/${existing.id}`]: () => ++reads === 1
+        ? jsonResponse(200, existing)
+        : new Promise<Response>((done) => { resolve = done; }),
+      [`PATCH /meetings/${existing.id}`]: conflict,
+    });
+    renderWithProviders(<EditMeeting id={existing.id} />);
+    await userEvent.type(await screen.findByLabelText('Title'), ' (mine)');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Reload' }));
+    expect(await screen.findByText('Loading updates…')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => resolve(jsonResponse(200, { ...existing, title: 'Changed elsewhere', version: 5 })));
+    await waitFor(() => expect(screen.queryByText('Loading updates…')).toBeNull());
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Changed elsewhere');
+    expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
   });
 });

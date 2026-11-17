@@ -216,7 +216,7 @@ describe('Creating from an empty slot', () => {
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
     fireEvent.click(wednesday, { clientY: 10.75 * 48 }); // 10:45 rounds down to the 10:30 slot
-    expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-18&start=10:30');
+    expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-18&start=10:30&returnTo=%2F%3Fview%3Dcalendar%26date%3D2026-11-18');
   });
 
   it('does not create when an event is clicked', async () => {
@@ -243,7 +243,18 @@ describe('Creating from an empty slot', () => {
     mockRange([]);
     renderWithProviders(<MeetingsDashboard />);
     fireEvent.click(await screen.findByRole('list', { name: /Thursday, November 26, 2026/ }));
-    expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-26&start=09:00');
+    expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-26&start=09:00&returnTo=%2F%3Fview%3Dcalendar%26mode%3Dmonth%26date%3D2026-11-18');
+  });
+
+  it('keeps month/date/status/scope when opening creation from the calendar header', async () => {
+    setSearchParams('view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false');
+    mockRange([]);
+    renderWithProviders(<MeetingsDashboard />);
+    await screen.findByText('0 meetings in November');
+    const href = screen.getByRole('link', { name: 'Schedule meeting' }).getAttribute('href')!;
+    const url = new URL(href, 'http://localhost');
+    expect(url.pathname).toBe('/meetings/new');
+    expect(url.searchParams.get('returnTo')).toBe('/?view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false');
   });
 });
 
@@ -259,7 +270,7 @@ describe('Phone agenda', () => {
     const wednesday = await screen.findByRole('region', { name: /Wednesday, November 18, 2026/ });
     expect(within(wednesday).getByRole('button', { name: /Candidate a, 10:00 AM – 11:00 AM, Confirmed/ })).toBeTruthy();
     expect(within(wednesday).getByRole('link', { name: 'New meeting on Wednesday, November 18, 2026' }).getAttribute('href')).toBe(
-      '/meetings/new?date=2026-11-18&start=09:00',
+      '/meetings/new?date=2026-11-18&start=09:00&returnTo=%2F%3Fview%3Dcalendar%26date%3D2026-11-18',
     );
     expect(within(screen.getByRole('region', { name: /Thursday, November 19, 2026/ })).getByText('No meetings')).toBeTruthy();
     expect(screen.queryByRole('list', { name: /Wednesday/ })).toBeNull();

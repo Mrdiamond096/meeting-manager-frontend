@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import Link from 'next/link';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { useForm } from 'react-hook-form';
 import { Alert } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -48,7 +48,7 @@ export function ForgotForm() {
             </Link>
           </>
         ) : (
-          <Button type="submit" disabled={forgot.isPending}>
+          <Button type="submit" loading={forgot.isPending}>
             {t('auth.forgot.submit')}
           </Button>
         )}

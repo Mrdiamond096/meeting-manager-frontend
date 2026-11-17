@@ -2,10 +2,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/alert';
+import { ActionStatus } from '@/components/ui/action-status';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,7 +38,7 @@ export function CandidateSummary({ id }: { id: string }) {
           </p>
         ) : null}
         {gone ? null : (
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => void query.refetch()}>
+          <Button variant="outline" size="sm" className="mt-2" loading={query.isFetching} onClick={() => void query.refetch()}>
             {t('error.retry')}
           </Button>
         )}
@@ -69,6 +70,7 @@ export function CandidateSummary({ id }: { id: string }) {
         {t('candidate.back')}
       </Link>
 
+      {query.isFetching ? <ActionStatus /> : null}
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <span

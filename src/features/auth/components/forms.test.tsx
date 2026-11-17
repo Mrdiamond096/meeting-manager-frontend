@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { currentUserKey } from '@/components/shell/use-current-user';
@@ -38,7 +38,9 @@ describe('LoginForm', () => {
   });
 
   it('shows one message for wrong credentials', async () => {
-    fetchMock.mockResolvedValue(jsonResponse(401, { error: { code: 'INVALID_CREDENTIALS', message: 'x', requestId: 'r' } }));
+    fetchMock.mockResolvedValue(
+      jsonResponse(401, { error: { code: 'INVALID_CREDENTIALS', message: 'x', requestId: 'r' } }),
+    );
     renderWithProviders(<LoginForm />);
     await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
     await userEvent.type(screen.getByLabelText('Password'), 'whatever1');
@@ -54,7 +56,14 @@ describe('VerifyForm', () => {
   it('shows remaining attempts on a wrong code', async () => {
     setSearchParams(`c=${CHALLENGE}`);
     fetchMock.mockResolvedValue(
-      jsonResponse(400, { error: { code: 'OTP_INVALID', message: 'x', requestId: 'r', details: [{ path: 'attemptsRemaining', message: '3' }] } }),
+      jsonResponse(400, {
+        error: {
+          code: 'OTP_INVALID',
+          message: 'x',
+          requestId: 'r',
+          details: [{ path: 'attemptsRemaining', message: '3' }],
+        },
+      }),
     );
     renderWithProviders(<VerifyForm />);
     typeCode('000000');
@@ -93,4 +102,61 @@ describe('ForgotForm', () => {
     expect(await screen.findByText('If an account exists for this email, we sent a code.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Continue' }).getAttribute('href')).toBe(`/reset-password?c=${CHALLENGE}`);
   });
+});
+
+describe('pending actions', () => {
+  it('shows login progress, prevents duplicate requests, and restores the action on error', async () => {
+    let resolve!: (value: Response) => void;
+    fetchMock.mockImplementation(
+      () =>
+        new Promise<Response>((done) => {
+          resolve = done;
+        }),
+    );
+    renderWithProviders(<LoginForm />);
+    await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
+    await userEvent.type(screen.getByLabelText('Password'), 'whatever1');
+    const button = screen.getByRole('button', { name: 'Log in' }) as HTMLButtonElement;
+    await userEvent.click(button);
+    await waitFor(() => expect(button.getAttribute('aria-busy')).toBe('true'));
+    expect(button.querySelector('svg')).toBeTruthy();
+    await userEvent.click(button);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await act(async () => resolve(jsonResponse(401, { error: { code: 'INVALID_CREDENTIALS', message: 'x' } })));
+    await screen.findByRole('alert');
+    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(button.hasAttribute('aria-busy')).toBe(false);
+  });
+
+  it.each(['Verify', 'Resend code'])(
+    'blocks both OTP actions while %s is pending and restores them on error',
+    async (action) => {
+      setSearchParams(`c=${CHALLENGE}`);
+      let resolve!: (value: Response) => void;
+      fetchMock.mockImplementation(
+        () =>
+          new Promise<Response>((done) => {
+            resolve = done;
+          }),
+      );
+      renderWithProviders(<VerifyForm />);
+      fireEvent.paste(screen.getByLabelText('Verification code digit 1'), {
+        clipboardData: { getData: () => '112233' },
+      });
+      const verify = screen.getByRole('button', { name: 'Verify' }) as HTMLButtonElement;
+      const resend = screen.getByRole('button', { name: 'Resend code' }) as HTMLButtonElement;
+      const selected = action === 'Verify' ? verify : resend;
+      await userEvent.click(selected);
+      await waitFor(() => expect(selected.getAttribute('aria-busy')).toBe('true'));
+      expect(verify.disabled).toBe(true);
+      expect(resend.disabled).toBe(true);
+      await userEvent.click(verify);
+      await userEvent.click(resend);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await act(async () => resolve(jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'x' } })));
+      await screen.findByRole('alert');
+      await waitFor(() => expect(verify.disabled).toBe(false));
+      expect(resend.disabled).toBe(false);
+    },
+  );
 });

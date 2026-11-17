@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { jsonResponse, renderWithProviders, router, setSearchParams } from '@/test/render';
@@ -33,7 +33,8 @@ function meeting(overrides: Partial<Meeting> = {}): Meeting {
   };
 }
 
-const page = (items: Meeting[], total = items.length, pageNo = 1) => jsonResponse(200, { items, page: pageNo, pageSize: 12, total });
+const page = (items: Meeting[], total = items.length, pageNo = 1) =>
+  jsonResponse(200, { items, page: pageNo, pageSize: 12, total });
 
 beforeEach(() => {
   fetchMock = vi.spyOn(globalThis, 'fetch');
@@ -43,7 +44,12 @@ afterEach(() => vi.clearAllMocks());
 
 describe('MeetingsDashboard', () => {
   it('shows skeletons, then cards with status, schedule and where', async () => {
-    fetchMock.mockResolvedValue(page([meeting(), meeting({ title: 'Hiring sync', candidate: null, status: 'PENDING', meetingType: 'ONSITE', provider: null })]));
+    fetchMock.mockResolvedValue(
+      page([
+        meeting(),
+        meeting({ title: 'Hiring sync', candidate: null, status: 'PENDING', meetingType: 'ONSITE', provider: null }),
+      ]),
+    );
     renderWithProviders(<MeetingsDashboard />);
     expect(document.querySelector('[aria-busy]')).toBeTruthy();
 
@@ -72,7 +78,7 @@ describe('MeetingsDashboard', () => {
     expect(screen.getByRole('radio', { name: 'Mine' }).getAttribute('aria-checked')).toBe('true');
   });
 
-  it('shows everyone\'s meetings only for an explicit mine=false', async () => {
+  it("shows everyone's meetings only for an explicit mine=false", async () => {
     setSearchParams('mine=false');
     fetchMock.mockResolvedValue(page([meeting()]));
     renderWithProviders(<MeetingsDashboard />);
@@ -107,7 +113,17 @@ describe('MeetingsDashboard', () => {
         dueDate: new Date(2030, 4, 10, hour).toISOString(),
         endAt: new Date(2030, 4, 10, hour + 1).toISOString(),
       });
-      fetchMock.mockResolvedValue(page([meeting(slot(12)), meeting(slot(16)), meeting({ ...slot(16), dueDate: new Date(2030, 4, 11, 9).toISOString(), endAt: new Date(2030, 4, 11, 10).toISOString() })]));
+      fetchMock.mockResolvedValue(
+        page([
+          meeting(slot(12)),
+          meeting(slot(16)),
+          meeting({
+            ...slot(16),
+            dueDate: new Date(2030, 4, 11, 9).toISOString(),
+            endAt: new Date(2030, 4, 11, 10).toISOString(),
+          }),
+        ]),
+      );
       renderWithProviders(<MeetingsDashboard />);
       await screen.findAllByRole('heading', { name: 'Alice Tan' });
       expect(screen.getAllByText('Past')).toHaveLength(1);
@@ -164,7 +180,9 @@ describe('MeetingsDashboard', () => {
   });
 
   it('shows an error with the request id and retries', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'x', requestId: 'req-42' } }));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'x', requestId: 'req-42' } }),
+    );
     renderWithProviders(<MeetingsDashboard />);
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText('Could not load meetings')).toBeTruthy();
@@ -180,7 +198,9 @@ describe('MeetingsDashboard', () => {
     fetchMock.mockResolvedValue(page([m]));
     renderWithProviders(<MeetingsDashboard />);
     await screen.findByRole('heading', { name: 'Alice Tan' });
-    expect(screen.getByRole('link', { name: /View details/ }).getAttribute('href')).toBe(`/candidates/c1?meeting=${m.id}`);
+    expect(screen.getByRole('link', { name: /View details/ }).getAttribute('href')).toBe(
+      `/candidates/c1?meeting=${m.id}`,
+    );
     expect(screen.getByRole('link', { name: 'Schedule meeting' }).getAttribute('href')).toBe('/meetings/new');
   });
 
@@ -191,4 +211,27 @@ describe('MeetingsDashboard', () => {
     await screen.findByRole('heading', { name: 'Hiring sync' });
     expect(screen.getByRole('link', { name: /View details/ }).getAttribute('href')).toBe(`/meetings/${m.id}/edit`);
   });
+});
+
+it('keeps cards visible and announces a slow background refresh until it completes', async () => {
+  fetchMock.mockResolvedValueOnce(page([meeting()], 30));
+  const { client } = renderWithProviders(<MeetingsDashboard />);
+  await screen.findByRole('heading', { name: 'Alice Tan' });
+  await waitFor(() => expect(screen.queryByText('Loading updates…')).toBeNull());
+  let resolve!: (value: Response) => void;
+  fetchMock.mockImplementationOnce(
+    () =>
+      new Promise<Response>((done) => {
+        resolve = done;
+      }),
+  );
+  act(() => {
+    void client.invalidateQueries({ queryKey: ['meetings'] });
+  });
+  expect(await screen.findByText('Loading updates…')).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Alice Tan' })).toBeTruthy();
+  expect((screen.getByRole('button', { name: /Next/ }) as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => resolve(page([meeting()], 30)));
+  await waitFor(() => expect(screen.queryByText('Loading updates…')).toBeNull());
+  expect((screen.getByRole('button', { name: /Next/ }) as HTMLButtonElement).disabled).toBe(false);
 });

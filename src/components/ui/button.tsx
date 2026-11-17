@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
@@ -25,17 +26,38 @@ export const buttonVariants = cva(
   },
 );
 
-export interface ButtonProps extends ComponentProps<'button'>, VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-}
+export type ButtonProps = ComponentProps<'button'> &
+  VariantProps<typeof buttonVariants> &
+  ({ asChild: true; loading?: never } | { asChild?: false; loading?: boolean });
 
-export function Button({ className, variant, size, asChild, type, ...props }: ButtonProps) {
-  const Comp = asChild ? Slot : 'button';
+export function Button({
+  className,
+  variant,
+  size,
+  asChild,
+  type,
+  loading,
+  disabled,
+  children,
+  ...props
+}: ButtonProps) {
+  const classes = cn(buttonVariants({ variant, size }), className);
+  if (asChild)
+    return (
+      <Slot className={classes} {...{ disabled, type, ...props }}>
+        {children}
+      </Slot>
+    );
   return (
-    <Comp
-      className={cn(buttonVariants({ variant, size }), className)}
-      {...(asChild ? {} : { type: type ?? 'button' })}
+    <button
+      className={classes}
+      type={type ?? 'button'}
       {...props}
-    />
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+    >
+      {loading ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
+      {children}
+    </button>
   );
 }
