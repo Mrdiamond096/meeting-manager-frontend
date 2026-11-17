@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 // '@/test/render' mocks next/navigation, so it is imported before the components.
@@ -207,5 +207,61 @@ describe('Event popover', () => {
     renderWithProviders(<MeetingsDashboard />);
     await userEvent.click(await screen.findByRole('button', { name: /Candidate a, 10:00 AM/ }));
     expect(within(await screen.findByRole('dialog')).getByRole('link', { name: 'View details' })).toBeTruthy();
+  });
+});
+
+describe('Creating from an empty slot', () => {
+  it('opens the new-meeting form at the clicked half hour of the week', async () => {
+    mockRange([]);
+    renderWithProviders(<MeetingsDashboard />);
+    const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
+    fireEvent.click(wednesday, { clientY: 10.75 * 48 }); // 10:45 rounds down to the 10:30 slot
+    expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-18&start=10:30');
+  });
+
+  it('does not create when an event is clicked', async () => {
+    mockRange([meeting('a', {})]);
+    renderWithProviders(<MeetingsDashboard />);
+    await userEvent.click(await screen.findByRole('button', { name: /Candidate a, 10:00 AM/ }));
+    await screen.findByRole('dialog');
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('does not create when the click only closes an open event popover', async () => {
+    mockRange([meeting('a', {})]);
+    renderWithProviders(<MeetingsDashboard />);
+    await userEvent.click(await screen.findByRole('button', { name: /Candidate a, 10:00 AM/ }));
+    await screen.findByRole('dialog');
+    const friday = screen.getByRole('list', { name: /Friday, November 20, 2026/, hidden: true });
+    fireEvent.pointerDown(friday);
+    fireEvent.click(friday, { clientY: 100 });
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('opens the form for a day of the month at 09:00', async () => {
+    setSearchParams('view=calendar&mode=month&date=2026-11-18');
+    mockRange([]);
+    renderWithProviders(<MeetingsDashboard />);
+    fireEvent.click(await screen.findByRole('list', { name: /Thursday, November 26, 2026/ }));
+    expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-26&start=09:00');
+  });
+});
+
+describe('Phone agenda', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('lists the week day by day with a create link for each day', async () => {
+    mockRange([meeting('a', {})]);
+    renderWithProviders(<MeetingsDashboard />);
+    const wednesday = await screen.findByRole('region', { name: /Wednesday, November 18, 2026/ });
+    expect(within(wednesday).getByRole('button', { name: /Candidate a, 10:00 AM – 11:00 AM, Confirmed/ })).toBeTruthy();
+    expect(within(wednesday).getByRole('link', { name: 'New meeting on Wednesday, November 18, 2026' }).getAttribute('href')).toBe(
+      '/meetings/new?date=2026-11-18&start=09:00',
+    );
+    expect(within(screen.getByRole('region', { name: /Thursday, November 19, 2026/ })).getByText('No meetings')).toBeTruthy();
+    expect(screen.queryByRole('list', { name: /Wednesday/ })).toBeNull();
   });
 });

@@ -36,6 +36,8 @@ interface MeetingFormProps {
   meeting?: Meeting;
   /** Called after a 409 so the container can refetch the latest version. */
   onReload?: () => void;
+  /** Start picked from an empty calendar slot (new meetings only). */
+  startAt?: { date: string; time: string };
 }
 
 function Field({ label, error, htmlFor, children }: { label: string; error?: string; htmlFor: string; children: ReactNode }) {
@@ -57,14 +59,14 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function MeetingForm({ meeting, onReload }: MeetingFormProps) {
+export function MeetingForm({ meeting, onReload, startAt }: MeetingFormProps) {
   const { t, intl } = useI18n();
   const router = useRouter();
   const toast = useToast();
   const queryClient = useQueryClient();
   const uid = useId();
   const editing = Boolean(meeting);
-  const initial = useMemo(() => (meeting ? meetingToFormValues(meeting) : emptyFormValues(new Date())), [meeting]);
+  const initial = useMemo(() => (meeting ? meetingToFormValues(meeting) : emptyFormValues(new Date(), startAt)), [meeting, startAt?.date, startAt?.time]);
   const form = useForm<MeetingFormValues>({ resolver: zodResolver(meetingFormSchema), defaultValues: initial });
   const { register, watch, setValue, setError, formState } = form;
   const [conflict, setConflict] = useState(false);

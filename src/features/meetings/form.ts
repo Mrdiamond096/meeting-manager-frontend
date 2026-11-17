@@ -55,9 +55,22 @@ export const meetingFormSchema = z
     }
   });
 
-export function emptyFormValues(now: Date): MeetingFormValues {
-  const start = new Date(now);
-  start.setMinutes(Math.ceil((start.getMinutes() + 1) / 15) * 15, 0, 0);
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** A start from the URL (`?date=YYYY-MM-DD&start=HH:mm`), or undefined when either part is missing or not a real day. */
+export function parseStartParams(date: unknown, time: unknown): { date: string; time: string } | undefined {
+  if (typeof date !== 'string' || typeof time !== 'string' || !TIME.test(time)) return undefined;
+  const m = DATE.exec(date);
+  if (!m) return undefined;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]) ? { date, time } : undefined;
+}
+
+/** `at` is a start picked in the calendar; without it the form starts at the next quarter hour. */
+export function emptyFormValues(now: Date, at?: { date: string; time: string }): MeetingFormValues {
+  const start = at ? new Date(fromLocalParts(at.date, at.time)) : new Date(now);
+  if (!at) start.setMinutes(Math.ceil((start.getMinutes() + 1) / 15) * 15, 0, 0);
   const end = new Date(start.getTime() + 60 * 60_000);
   const s = toLocalParts(start.toISOString());
   const e = toLocalParts(end.toISOString());

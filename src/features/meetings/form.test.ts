@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fromLocalParts } from './datetime';
-import { emptyFormValues, KEEP_END, mapApiErrors, meetingFormSchema, meetingToFormValues, toCreateBody, toUpdateBody } from './form';
+import { emptyFormValues, KEEP_END, mapApiErrors, parseStartParams, meetingFormSchema, meetingToFormValues, toCreateBody, toUpdateBody } from './form';
 import type { Meeting } from './types';
 
 const meeting: Meeting = {
@@ -150,5 +150,22 @@ describe('mapApiErrors', () => {
     ]);
     expect(fields).toEqual({ date: 'Invalid datetime', newName: 'Too long' });
     expect(unmapped).toEqual(['Nothing to update']);
+  });
+});
+
+describe('start from a calendar slot', () => {
+  it('starts the form at the picked time with an hour-long end', () => {
+    const v = emptyFormValues(new Date(2030, 0, 1, 8, 7), { date: '2030-05-10', time: '10:30' });
+    expect([v.date, v.startTime, v.endTime]).toEqual(['2030-05-10', '10:30', '11:30']);
+  });
+  it('leaves the end open when an hour later is the next day', () => {
+    expect(emptyFormValues(new Date(), { date: '2030-05-10', time: '23:30' }).endTime).toBe('');
+  });
+  it('accepts only a real day and a valid time from the URL', () => {
+    expect(parseStartParams('2030-05-10', '10:30')).toEqual({ date: '2030-05-10', time: '10:30' });
+    expect(parseStartParams('2030-02-30', '10:30')).toBeUndefined();
+    expect(parseStartParams('2030-05-10', '24:00')).toBeUndefined();
+    expect(parseStartParams('2030-05-10', undefined)).toBeUndefined();
+    expect(parseStartParams(['2030-05-10'], '10:30')).toBeUndefined();
   });
 });

@@ -8,15 +8,20 @@ import { cn } from '@/lib/cn';
 import { isSameDay, monthGrid } from '../dates';
 import { meetingsOnDay } from '../layout';
 import { EventPopover } from './event-popover';
+import { useCreateOnClick } from './use-create-on-click';
 
 /** ADR-014: at most 3 events per day, then "+n more" (opens that week). */
 const MAX_PER_DAY = 3;
+
+/** A day picked in the month has no time yet: start at 09:00. */
+const DAY_START = '09:00';
 
 const DOT = { CONFIRMED: 'bg-success', PENDING: 'bg-warning', CANCELLED: 'bg-muted-foreground' } as const;
 
 export function MonthView({ date, meetings, onShowWeek }: { date: Date; meetings: Meeting[]; onShowWeek: (day: Date) => void }) {
   const { t, intl, locale } = useI18n();
   const days = monthGrid(date);
+  const create = useCreateOnClick();
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => setNow(new Date()), []);
 
@@ -42,7 +47,8 @@ export function MonthView({ date, meetings, onShowWeek }: { date: Date; meetings
           return (
             <div
               key={day.getTime()}
-              className={cn('flex min-h-24 flex-col gap-0.5 border-l border-t border-border p-1.5 [&:nth-child(7n+1)]:border-l-0 [&:nth-child(-n+7)]:border-t-0', !inMonth && 'bg-muted/50')}
+              {...create(day, DAY_START)}
+              className={cn('flex min-h-24 cursor-cell flex-col gap-0.5 border-l border-t border-border p-1.5 [&:nth-child(7n+1)]:border-l-0 [&:nth-child(-n+7)]:border-t-0', !inMonth && 'bg-muted/50')}
             >
               <span
                 aria-current={today ? 'date' : undefined}
@@ -53,7 +59,7 @@ export function MonthView({ date, meetings, onShowWeek }: { date: Date; meetings
               >
                 {day.getDate()}
               </span>
-              <ul aria-label={fullDate.format(day)} className="flex min-w-0 flex-col gap-0.5">
+              <ul aria-label={fullDate.format(day)} {...create(day, DAY_START)} className="flex min-w-0 flex-1 flex-col gap-0.5">
                 {list.slice(0, hidden > 0 ? MAX_PER_DAY : list.length).map((m) => {
                   const name = m.candidate?.name ?? m.title;
                   const start = new Date(m.dueDate);
