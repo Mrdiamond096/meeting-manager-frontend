@@ -245,6 +245,17 @@ describe('Creating from an empty slot', () => {
     fireEvent.click(await screen.findByRole('list', { name: /Thursday, November 26, 2026/ }));
     expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-26&start=09:00&returnTo=%2F%3Fview%3Dcalendar%26mode%3Dmonth%26date%3D2026-11-18');
   });
+
+  it('keeps month/date/status/scope when opening creation from the calendar header', async () => {
+    setSearchParams('view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false');
+    mockRange([]);
+    renderWithProviders(<MeetingsDashboard />);
+    await screen.findByText('0 meetings in November');
+    const href = screen.getByRole('link', { name: 'Schedule meeting' }).getAttribute('href')!;
+    const url = new URL(href, 'http://localhost');
+    expect(url.pathname).toBe('/meetings/new');
+    expect(url.searchParams.get('returnTo')).toBe('/?view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false');
+  });
 });
 
 describe('Phone agenda', () => {
@@ -264,16 +275,4 @@ describe('Phone agenda', () => {
     expect(within(screen.getByRole('region', { name: /Thursday, November 19, 2026/ })).getByText('No meetings')).toBeTruthy();
     expect(screen.queryByRole('list', { name: /Wednesday/ })).toBeNull();
   });
-});
-
-
-it('keeps month/date/status/scope when opening creation from the calendar header', async () => {
-  setSearchParams('view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false');
-  mockRange([]);
-  renderWithProviders(<MeetingsDashboard />);
-  await screen.findByText('0 meetings in November');
-  const href = screen.getByRole('link', { name: 'Schedule meeting' }).getAttribute('href')!;
-  const url = new URL(href, 'http://localhost');
-  expect(url.pathname).toBe('/meetings/new');
-  expect(url.searchParams.get('returnTo')).toBe('/?view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false');
 });

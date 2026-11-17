@@ -99,7 +99,7 @@ export function VerifyForm() {
             variant="link"
             size="sm"
             type="button"
-            className="text-primary hover:underline disabled:opacity-50"
+            className="h-auto rounded-none p-0 font-normal text-primary hover:underline disabled:opacity-50"
             loading={resend.isPending}
             disabled={verify.isPending || locked || router.isNavigating}
             onClick={() => resend.mutate({ challengeId })}

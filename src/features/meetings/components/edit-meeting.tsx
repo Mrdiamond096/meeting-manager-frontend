@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { ActionStatus } from '@/components/ui/action-status';
 import { Button } from '@/components/ui/button';
@@ -12,12 +13,23 @@ import { MeetingForm } from './meeting-form';
 
 export function EditMeeting({ id }: { id: string }) {
   const { t } = useI18n();
+  const [reloading, setReloading] = useState(false);
   const query = useQuery({
     queryKey: meetingKeys.detail(id),
     queryFn: ({ signal }) => meetingsApi.get(id, signal),
     // The form owns a copy of the data; never refetch underneath the user while they type.
     staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
+
+  async function reloadAfterConflict() {
+    setReloading(true);
+    try {
+      await query.refetch();
+    } finally {
+      setReloading(false);
+    }
+  }
 
   if (query.isError) {
     const gone = isApiError(query.error, 'NOT_FOUND') || isApiError(query.error, 'VALIDATION_ERROR');
@@ -53,12 +65,12 @@ export function EditMeeting({ id }: { id: string }) {
   // Keyed by version so a reload after a 409 remounts the form with the fresh values.
   return (
     <div className="flex flex-col gap-4">
-      {query.isFetching ? <ActionStatus /> : null}
+      {reloading ? <ActionStatus /> : null}
       <MeetingForm
         key={query.data.version}
         meeting={query.data}
-        refreshing={query.isFetching}
-        onReload={() => void query.refetch()}
+        refreshing={reloading}
+        onReload={() => void reloadAfterConflict()}
       />
     </div>
   );

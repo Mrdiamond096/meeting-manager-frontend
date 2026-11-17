@@ -37,7 +37,7 @@ export function MeetingNotes({ meetingId }: { meetingId: string }) {
         <CardTitle>{t('candidate.notes.title')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-      {query.isFetching ? <ActionStatus /> : null}
+        {query.isFetching ? <ActionStatus /> : null}
         {query.isError ? (
           <Alert tone="error">
             <p className="font-medium">{t('candidate.notes.loadError')}</p>
