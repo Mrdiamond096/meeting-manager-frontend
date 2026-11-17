@@ -7,6 +7,8 @@ export const isPublicPath = (pathname: string) =>
 export const SESSION_COOKIE = 'sid';
 
 export const newMeetingHref = '/meetings/new';
+/** The new-meeting form with its date (YYYY-MM-DD) and start (HH:mm) filled in, from a calendar slot. */
+export const newMeetingAt = (date: string, time: string) => `${newMeetingHref}?date=${date}&start=${time}`;
 export const editMeetingHref = (id: string) => `/meetings/${id}/edit`;
 export const candidateHref = (id: string, meetingId?: string) =>
   meetingId ? `/candidates/${id}?meeting=${meetingId}` : `/candidates/${id}`;

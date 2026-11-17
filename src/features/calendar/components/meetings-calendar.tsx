@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,7 @@ import { isApiError } from '@/lib/api';
 import { Segmented } from '@/components/ui/segmented';
 import { addDays, addMonths, monthGrid, splitDays, startOfMonth, startOfWeek } from '../dates';
 import { endOf } from '../layout';
+import { DayAgenda } from './day-agenda';
 import { MonthView } from './month-view';
 import { WeekView } from './week-view';
 
@@ -40,6 +41,20 @@ interface Props {
   onSummary: (summary: string | undefined) => void;
 }
 
+/** Below Tailwind's `md`: the week becomes a day list. The calendar renders only in the browser, so no server snapshot is needed. */
+const PHONE = '(max-width: 767px)';
+function usePhone() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia?.(PHONE);
+      query?.addEventListener('change', onChange);
+      return () => query?.removeEventListener('change', onChange);
+    },
+    () => window.matchMedia?.(PHONE).matches ?? false,
+    () => false,
+  );
+}
+
 /** Short zone name of the browser (e.g. GMT+7); read after mount so the server render does not guess it. */
 function useZoneName(intl: string, at: Date) {
   const [zone, setZone] = useState<string>();
@@ -62,6 +77,7 @@ export function MeetingsCalendar(props: Props) {
 function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSummary }: Props) {
   const { t, intl } = useI18n();
   const month = mode === 'month';
+  const phone = usePhone();
   // Week: Mon–Mon. Month: the 42 days of the 6×7 grid (the API's maximum range).
   const start = month ? monthGrid(date)[0]! : startOfWeek(date);
   const end = addDays(start, month ? 42 : 7);
@@ -139,6 +155,8 @@ function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSumm
         <div aria-busy={query.isFetching || undefined}>
           {month ? (
             <MonthView date={date} meetings={meetings} onShowWeek={(day) => onDateChange(day, 'week')} />
+          ) : phone ? (
+            <DayAgenda date={start} meetings={meetings} />
           ) : (
             <WeekView date={start} meetings={meetings} zone={zone} />
           )}

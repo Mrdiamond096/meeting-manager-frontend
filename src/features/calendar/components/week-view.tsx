@@ -8,12 +8,20 @@ import { cn } from '@/lib/cn';
 import { isSameDay, minutesInDay, weekDays } from '../dates';
 import { layoutDay } from '../layout';
 import { EventPopover } from './event-popover';
+import { useCreateOnClick } from './use-create-on-click';
 
 /** Pixels per hour (h-12 rows); the grid opens at 07:00 with 13 hours in view and scrolls over 00–24 (ADR-014). */
 const HOUR = 48;
 const FIRST_VISIBLE_HOUR = 7;
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const px = (minutes: number) => `${(minutes / 60) * HOUR}px`;
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** The half hour under the pointer, as HH:mm (wall clock, like the rows). */
+export function slotAt(offsetY: number): string {
+  const minutes = Math.min(Math.max(Math.floor((offsetY / HOUR) * 2) * 30, 0), 23 * 60 + 30);
+  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+}
 
 const TONE = {
   CONFIRMED: 'border-success bg-success-subtle',
@@ -87,13 +95,16 @@ export function WeekView({ date, meetings, zone }: { date: Date; meetings: Meeti
 
 function DayColumn({ day, meetings, now }: { day: Date; meetings: Meeting[]; now: Date | null }) {
   const { t, intl, locale } = useI18n();
+  const create = useCreateOnClick();
   const placed = layoutDay(meetings, day);
   return (
     <div className="relative border-l border-border">
       {HOURS.map((h) => (
         <div key={h} aria-hidden className="h-12 border-b border-border/60" />
       ))}
-      <ol aria-label={new Intl.DateTimeFormat(intl, { dateStyle: 'full' }).format(day)} className="absolute inset-0">
+      <ol aria-label={new Intl.DateTimeFormat(intl, { dateStyle: 'full' }).format(day)} className="absolute inset-0 cursor-cell"
+        {...create(day, (e) => slotAt(e.clientY - e.currentTarget.getBoundingClientRect().top))}
+      >
         {placed.map(({ meeting, top, height, column, columns }) => {
           const name = meeting.candidate?.name ?? meeting.title;
           const when = formatTimeRange(meeting, intl, locale);
