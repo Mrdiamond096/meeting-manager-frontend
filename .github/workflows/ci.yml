@@ -18,8 +18,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      # Fails on high/critical advisories in any dependency (runtime or dev tooling).
-      - run: npm audit --audit-level=high
+      # Production has no exceptions; the full audit uses the reviewed, expiring dev-tool exception.
+      - run: npm run test:audit
+      - run: npm run audit:ci
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
