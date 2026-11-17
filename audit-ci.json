@@ -1,0 +1,16 @@
+{
+  "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "high": true,
+  "package-manager": "npm",
+  "pass-enoaudit": false,
+  "retry-count": 2,
+  "allowlist": [
+    {
+      "GHSA-fc5q-39xc-vjpf": {
+        "active": true,
+        "notes": "No patched picomatch release is available. This exception covers only the dev/test tooling advisory, using repository-controlled globs. The preceding unallowlisted npm production audit must pass. Review by 2026-12-31 (UTC).",
+        "expiry": "2026-12-31T23:59:59.999Z"
+      }
+    }
+  ]
+}
