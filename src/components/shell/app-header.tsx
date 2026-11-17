@@ -93,7 +93,12 @@ export function AppHeader() {
             {initials(user?.email)}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {user ? <DropdownMenuLabel>{user.email}</DropdownMenuLabel> : null}
+            {user ? (
+              <DropdownMenuLabel className="flex flex-col gap-0.5">
+                {user.email}
+                <span className="text-xs font-normal text-muted-foreground">{t(`auth.role.${user.role}`)}</span>
+              </DropdownMenuLabel>
+            ) : null}
             {user ? <DropdownMenuSeparator /> : null}
             <DropdownMenuItem disabled={loggingOut} onSelect={() => void logout()}>
               <LogOut className="size-4" />

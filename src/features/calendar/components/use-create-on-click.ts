@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef, type MouseEvent } from 'react';
+import { usePermissions } from '@/lib/permissions';
 import { calendarReturnHref, newMeetingAt } from '@/lib/routes';
 import { toDateParam } from '../dates';
 
@@ -12,13 +13,14 @@ import { toDateParam } from '../dates';
 export function useCreateOnClick() {
   const router = useRouter();
   const returnTo = calendarReturnHref(useSearchParams());
+  const { canSchedule } = usePermissions();
   const closingPopover = useRef(false);
   return (day: Date, time: string | ((e: MouseEvent<HTMLElement>) => string)) => ({
     onPointerDown: () => {
       closingPopover.current = document.querySelector('[data-radix-popper-content-wrapper]') !== null;
     },
     onClick: (e: MouseEvent<HTMLElement>) => {
-      if (e.target !== e.currentTarget || closingPopover.current) return;
+      if (!canSchedule || e.target !== e.currentTarget || closingPopover.current) return;
       router.push(newMeetingAt(toDateParam(day), typeof time === 'string' ? time : time(e), returnTo));
     },
   });

@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 export interface CurrentUser {
   id: string;
   email: string;
-  role: 'USER';
+  role: 'ADMIN' | 'RECRUITER' | 'INTERVIEWER';
 }
 
 export const currentUserKey = ['auth', 'me'] as const;

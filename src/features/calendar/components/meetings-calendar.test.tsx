@@ -219,6 +219,20 @@ describe('Creating from an empty slot', () => {
     expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-18&start=10:30&returnTo=%2F%3Fview%3Dcalendar%26date%3D2026-11-18');
   });
 
+  it('does not create from a slot, a schedule button or an edit link for an interviewer', async () => {
+    mockRange([meeting('a', {})]);
+    renderWithProviders(<MeetingsDashboard />, {
+      user: { id: 'u-int', email: 'int@example.test', role: 'INTERVIEWER' },
+    });
+    const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
+    fireEvent.click(wednesday, { clientY: 10.75 * 48 });
+    expect(router.push).not.toHaveBeenCalled();
+    expect(screen.queryByRole('link', { name: 'Schedule meeting' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /Candidate a, 10:00 AM/ }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('link', { name: 'Edit meeting' })).toBeNull();
+  });
+
   it('does not create when an event is clicked', async () => {
     mockRange([meeting('a', {})]);
     renderWithProviders(<MeetingsDashboard />);
