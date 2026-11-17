@@ -23,7 +23,7 @@ export const loginSchema = z.object({
 const withConfirm = <T extends z.ZodRawShape>(shape: T, field: 'password' | 'newPassword') =>
   z
     .object({ ...shape, confirmPassword: z.string() })
-    .refine((v) => (v as Record<string, unknown>)[field] === v.confirmPassword, {
+    .refine((v) => (v as Record<string, unknown>)[field] === (v as Record<string, unknown>).confirmPassword, {
       path: ['confirmPassword'],
       ...msg('auth.validation.passwordMismatch'),
     });
