@@ -108,6 +108,8 @@ function DayColumn({ day, meetings, now }: { day: Date; meetings: Meeting[]; now
         {placed.map(({ meeting, top, height, column, columns }) => {
           const name = meeting.candidate?.name ?? meeting.title;
           const when = formatTimeRange(meeting, intl, locale);
+          // Under 45 minutes there is room for one line only: the name, then the time, cut from the end.
+          const short = height < 45;
           return (
             <li
               key={meeting.id}
@@ -119,13 +121,23 @@ function DayColumn({ day, meetings, now }: { day: Date; meetings: Meeting[]; now
                 now={now}
                 label={`${name}, ${when}, ${t(`meetings.status.${meeting.status}`)}`}
                 className={cn(
-                  'flex h-full w-full flex-col overflow-hidden rounded-sm border-l-[3px] px-1.5 py-0.5 text-left text-xs hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'flex h-full w-full overflow-hidden rounded-sm border-l-[3px] px-1.5 text-left text-xs leading-tight hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  short ? 'items-center' : 'flex-col py-0.5',
                   TONE[meeting.status],
                   now && isPastMeeting(meeting, now) && 'opacity-60',
                 )}
               >
-                <span className="w-full truncate font-medium">{name}</span>
-                <span className="tabular w-full truncate text-[11px] text-muted-foreground">{when}</span>
+                {short ? (
+                  <span className="w-full truncate">
+                    <span className="font-medium">{name}</span>
+                    <span className="tabular text-[11px] text-muted-foreground">, {when}</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="w-full truncate font-medium">{name}</span>
+                    <span className="tabular w-full truncate text-[11px] text-muted-foreground">{when}</span>
+                  </>
+                )}
               </EventPopover>
             </li>
           );
