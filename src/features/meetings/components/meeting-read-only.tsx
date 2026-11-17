@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ActionLink as Link } from '@/components/ui/action-link';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MeetingInfo } from '@/features/candidates/components/meeting-info';
 import { MeetingNotes } from '@/features/candidates/components/meeting-notes';
@@ -47,6 +48,16 @@ export function MeetingReadOnly({ id }: { id: string }) {
       </Link>
       <h1 className="text-2xl font-semibold">{meeting.title}</h1>
       <MeetingInfo meeting={meeting} upcoming={new Date(meeting.dueDate) >= now} now={now} />
+      {meeting.description ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('meetingForm.field.notes')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap break-words text-sm">{meeting.description}</p>
+          </CardContent>
+        </Card>
+      ) : null}
       <MeetingNotes meetingId={meeting.id} />
     </div>
   );

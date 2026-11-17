@@ -1,4 +1,5 @@
 import { act, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import type { Meeting } from '../types';
 import { jsonResponse, renderWithProviders, setSearchParams } from '@/test/render';
@@ -9,7 +10,7 @@ import { RequireScheduler } from './require-scheduler';
 const meeting: Meeting = {
   id: '00000000-0000-4000-8000-000000000009',
   title: 'Panel sync',
-  description: '',
+  description: 'Bring the laptop.\nRoom 4A, second floor',
   dueDate: '2030-05-10T03:00:00.000Z',
   endAt: '2030-05-10T04:00:00.000Z',
   status: 'PENDING',
@@ -25,11 +26,13 @@ const meeting: Meeting = {
 
 let fetchMock: MockInstance<typeof fetch>;
 let answerMe: (role: string) => void;
+let meFails = false;
 
 beforeEach(() => {
   setSearchParams('');
   fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const path = new URL(String(input), 'http://localhost').pathname.replace('/api/v1', '');
+    if (path === '/auth/me' && meFails) return jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'x' } });
     if (path === '/auth/me')
       return new Promise<Response>((resolve) => {
         answerMe = (role) => resolve(jsonResponse(200, { user: { id: 'u-me', email: 'me@example.test', role } }));
@@ -38,7 +41,10 @@ beforeEach(() => {
     throw new Error(`Unexpected request ${path}`);
   });
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  meFails = false;
+  vi.restoreAllMocks();
+});
 
 const newForm = () => (
   <RequireScheduler>
@@ -64,6 +70,18 @@ describe('RequireScheduler (ADR-015)', () => {
     expect(screen.queryByLabelText('Title')).toBeNull();
   });
 
+  it('keeps the form closed when the role cannot be loaded, and opens it after a successful retry', async () => {
+    meFails = true;
+    renderWithProviders(newForm(), { user: null });
+    expect(await screen.findByText('Could not check your permissions. Try again.')).toBeTruthy();
+    expect(screen.queryByLabelText('Title')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Book meeting' })).toBeNull();
+    meFails = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await act(async () => answerMe('RECRUITER'));
+    expect(await screen.findByRole('button', { name: 'Book meeting' })).toBeTruthy();
+  });
+
   it('shows an interviewer a meeting without a candidate read-only, with feedback, at its edit URL', async () => {
     renderWithProviders(
       <RequireScheduler readOnly={<MeetingReadOnly id={meeting.id} />}>
@@ -72,6 +90,9 @@ describe('RequireScheduler (ADR-015)', () => {
       { user: { id: 'u-me', email: 'me@example.test', role: 'INTERVIEWER' } },
     );
     expect(await screen.findByRole('heading', { name: 'Panel sync' })).toBeTruthy();
+    const notes = screen.getByText(/Bring the laptop\./);
+    expect(notes.textContent).toBe('Bring the laptop.\nRoom 4A, second floor');
+    expect(notes.className).toContain('whitespace-pre-wrap');
     expect(screen.queryByText('edit form')).toBeNull();
     expect(screen.queryByText(/Your role cannot/)).toBeNull();
     expect(await screen.findByRole('button', { name: 'Add feedback' })).toBeTruthy();

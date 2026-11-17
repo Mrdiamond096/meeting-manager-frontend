@@ -13,12 +13,21 @@ import { canSchedule } from '@/lib/permissions';
 /**
  * Create/edit forms render only once the role is known, so nothing typed before the answer is thrown away.
  * A role that cannot schedule gets `readOnly` (e.g. the meeting itself) or an explanation instead.
- * If /auth/me fails, the form is shown: the API still enforces the role.
+ * If the role cannot be loaded the guard stays closed and offers Retry; a role already cached is still used.
  */
 export function RequireScheduler({ children, readOnly }: { children: ReactNode; readOnly?: ReactNode }) {
   const { t } = useI18n();
-  const { data: user, isPending, isError } = useCurrentUser();
-  if (isPending)
+  const { data: user, isPending, isError, isFetching, refetch } = useCurrentUser();
+  if (!user && isError)
+    return (
+      <Alert tone="error" className="mx-auto max-w-2xl">
+        <p className="font-medium">{t('auth.roleError')}</p>
+        <Button variant="outline" size="sm" className="mt-2" loading={isFetching} onClick={() => void refetch()}>
+          {t('error.retry')}
+        </Button>
+      </Alert>
+    );
+  if (!user && isPending)
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         <ActionStatus />
@@ -28,7 +37,7 @@ export function RequireScheduler({ children, readOnly }: { children: ReactNode; 
         </div>
       </div>
     );
-  if (isError || canSchedule(user?.role)) return children;
+  if (canSchedule(user?.role)) return children;
   if (readOnly) return readOnly;
   return (
     <Alert tone="error" className="mx-auto max-w-2xl">
