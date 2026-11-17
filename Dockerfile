@@ -1,4 +1,4 @@
-FROM node:24-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -15,7 +15,7 @@ ENV API_URL=$API_URL NEXT_TELEMETRY_DISABLED=1
 COPY . .
 RUN npm run build
 
-FROM node:24-alpine AS prod
+FROM node:26-alpine AS prod
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=build --chown=node:node /app/.next/standalone ./
