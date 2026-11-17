@@ -40,7 +40,7 @@
   --warning: #8a5a00;   --warning-subtle: #fdf3dc;   /* Pending */
   --destructive: #b42318; --destructive-subtle: #fdecea; /* Cancelled / Delete */
   --destructive-foreground: #ffffff;
-  --info: #475467;      --info-subtle: #eef1f5;      /* Completed */
+  --info: #475467;      --info-subtle: #eef1f5;      /* Past meetings */
 
   /* Charts */
   --chart-1: #1f7a6d;
