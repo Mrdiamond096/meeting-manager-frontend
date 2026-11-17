@@ -171,6 +171,29 @@ describe('MeetingForm (create)', () => {
     });
   });
 
+  it('preserves a custom title when a new candidate name changes', async () => {
+    mockApi({
+      'GET /candidates?q=Bo': () => jsonResponse(200, { items: [] }),
+      'GET /candidates/positions': () => jsonResponse(200, { items: POSITIONS }),
+      'POST /meetings': () => saved(),
+    });
+    renderWithProviders(<MeetingForm />);
+    await userEvent.type(candidateInput(), 'Bo');
+    await userEvent.click(await screen.findByRole('option', { name: /Create new candidate “Bo”/ }));
+    const title = screen.getByLabelText('Title');
+    await userEvent.clear(title);
+    await userEvent.type(title, 'Technical discussion');
+    await userEvent.clear(screen.getByLabelText('Candidate name'));
+    await userEvent.type(screen.getByLabelText('Candidate name'), 'Bea');
+    expect((title as HTMLInputElement).value).toBe('Technical discussion');
+    await userEvent.selectOptions(screen.getByLabelText('Position'), 'QA Engineer');
+    await userEvent.click(screen.getByRole('button', { name: 'Book meeting' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
+    expect(requestOf(calls.find((c) => c.method === 'POST')!)).toMatchObject({
+      title: 'Technical discussion', candidate: { name: 'Bea', position: 'QA Engineer' },
+    });
+  });
+
   it('explains a failed positions lookup with the request id and retries it', async () => {
     let attempts = 0;
     mockApi({
