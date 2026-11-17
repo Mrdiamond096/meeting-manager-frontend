@@ -1,4 +1,4 @@
-/** Temporary EGG Digital logo on Yolk (Figma decision D-Q4). Plain <img>: next/image adds an inline style that the nonce CSP blocks. */
+/** A plain image avoids the inline styles added by next/image, which the nonce CSP blocks. */
 export function BrandLogo() {
   return (
     <span className="inline-flex h-9 w-fit items-center rounded-md bg-brand px-2.5">

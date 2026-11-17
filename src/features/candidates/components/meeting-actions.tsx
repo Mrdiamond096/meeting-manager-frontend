@@ -18,7 +18,7 @@ type Confirm = 'cancel' | 'delete' | 'conflict' | null;
 
 export const FEEDBACK_FIELD_ID = 'add-feedback';
 
-/** Header actions of the candidate summary for the meeting on screen (Figma S8). */
+/** Actions for the meeting currently selected in the candidate summary. */
 export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; candidateId: string }) {
   const { t } = useI18n();
   const toast = useToast();

@@ -10,7 +10,7 @@ import type { Meeting } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 import { editMeetingHref, meetingHref } from '@/lib/routes';
 
-/** Click an event → this popover → View details (Figma flow F, ADR-014). `children` is the event's look. */
+/** Event trigger and detail popover. Candidate-less meetings link to the edit form. */
 export function EventPopover({ meeting, now, label, className, children }: { meeting: Meeting; now: Date | null; label: string; className: string; children: ReactNode }) {
   const { t, intl, locale } = useI18n();
   const where = meeting.meetingType
