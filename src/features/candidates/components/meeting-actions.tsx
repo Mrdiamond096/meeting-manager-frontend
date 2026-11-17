@@ -11,6 +11,7 @@ import { candidateKeys, meetingKeys, meetingsApi } from '@/features/meetings/api
 import type { Meeting } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
+import { usePermissions } from '@/lib/permissions';
 import { editMeetingHref } from '@/lib/routes';
 
 type Confirm = 'cancel' | 'delete' | 'conflict' | null;
@@ -62,6 +63,7 @@ export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; can
   });
 
   const busy = cancel.isPending || remove.isPending;
+  const { canSchedule, canDelete } = usePermissions();
   const open = (next: Confirm) => {
     setError(null);
     setConfirm(next);
@@ -69,17 +71,21 @@ export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; can
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button variant="ghost" disabled={busy} onClick={() => open('delete')}>
-        {t('candidate.actions.delete')}
-      </Button>
-      {meeting.status !== 'CANCELLED' ? (
+      {canDelete(meeting) ? (
+        <Button variant="ghost" disabled={busy} onClick={() => open('delete')}>
+          {t('candidate.actions.delete')}
+        </Button>
+      ) : null}
+      {canSchedule && meeting.status !== 'CANCELLED' ? (
         <Button variant="outline" disabled={busy} onClick={() => open('cancel')}>
           {t('candidate.actions.cancel')}
         </Button>
       ) : null}
-      <Button asChild variant="outline">
-        <Link href={editMeetingHref(meeting.id)}>{t('candidate.edit')}</Link>
-      </Button>
+      {canSchedule ? (
+        <Button asChild variant="outline">
+          <Link href={editMeetingHref(meeting.id)}>{t('candidate.edit')}</Link>
+        </Button>
+      ) : null}
       <Button onClick={() => document.getElementById(FEEDBACK_FIELD_ID)?.focus()}>{t('candidate.notes.add')}</Button>
 
       <Dialog open={confirm === 'cancel' || confirm === 'delete'} onOpenChange={(o) => !o && !busy && setConfirm(null)}>

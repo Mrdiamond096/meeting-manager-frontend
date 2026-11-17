@@ -57,6 +57,7 @@ export function useSaveMeeting({ meeting, initial, setError }: SaveMeetingOption
         else if (!Object.keys(fields).length) setFormError(t('meetingForm.error.generic'));
         return;
       }
+      if (error.code === 'FORBIDDEN') return setFormError(t('meetings.forbidden'));
       if (error.code === 'INVALID_TRANSITION') return setFormError(t('meetingForm.error.transition'));
       if (error.code === 'NOT_FOUND')
         return setFormError(t(editing ? 'meetingForm.notFound' : 'meetingForm.error.candidateGone'));

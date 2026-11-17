@@ -26,7 +26,7 @@ describe('auth schemas', () => {
   });
 
   it('enforces 8 chars, 72 bytes and matching confirmation', () => {
-    const base = { email: 'a@b.co', password: 'password1', confirmPassword: 'password1' };
+    const base = { email: 'a@b.co', password: 'password1', confirmPassword: 'password1', role: 'RECRUITER' };
     expect(registerSchema.safeParse(base).success).toBe(true);
     expect(registerSchema.safeParse({ ...base, password: 'short', confirmPassword: 'short' }).success).toBe(false);
     const thai = 'ก'.repeat(25); // 75 bytes in UTF-8

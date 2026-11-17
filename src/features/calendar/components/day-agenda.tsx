@@ -8,6 +8,7 @@ import { formatTimeRange, isPastMeeting } from '@/features/meetings/datetime';
 import type { Meeting } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 import { cn } from '@/lib/cn';
+import { usePermissions } from '@/lib/permissions';
 import { calendarReturnHref, newMeetingAt } from '@/lib/routes';
 import { isSameDay, toDateParam, weekDays } from '../dates';
 import { meetingsOnDay } from '../layout';
@@ -20,6 +21,7 @@ const DOT = { CONFIRMED: 'bg-success', PENDING: 'bg-warning', CANCELLED: 'bg-mut
 export function DayAgenda({ date, meetings }: { date: Date; meetings: Meeting[] }) {
   const { t, intl, locale } = useI18n();
   const returnTo = calendarReturnHref(useSearchParams());
+  const { canSchedule } = usePermissions();
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => setNow(new Date()), []);
   const heading = new Intl.DateTimeFormat(intl, { weekday: 'long', day: 'numeric', month: 'short' });
@@ -36,6 +38,7 @@ export function DayAgenda({ date, meetings }: { date: Date; meetings: Meeting[] 
               <h3 aria-current={today ? 'date' : undefined} className={cn('text-sm font-semibold', today && 'text-primary')}>
                 {heading.format(day)}
               </h3>
+              {canSchedule ? (
               <Link
                 href={newMeetingAt(toDateParam(day), DAY_START, returnTo)}
                 aria-label={t('calendar.addOn').replace('{day}', fullDate.format(day))}
@@ -43,6 +46,7 @@ export function DayAgenda({ date, meetings }: { date: Date; meetings: Meeting[] 
               >
                 <Plus aria-hidden className="size-4" />
               </Link>
+              ) : null}
             </div>
             {list.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('calendar.noMeetings')}</p>

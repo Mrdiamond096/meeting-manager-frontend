@@ -16,6 +16,7 @@ import { parseDateParam, toDateParam } from '@/features/calendar/dates';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
 import { useActionNavigation } from '@/lib/use-action-navigation';
+import { usePermissions } from '@/lib/permissions';
 import { calendarReturnHref, newMeetingHref } from '@/lib/routes';
 import { meetingKeys, meetingsApi } from '../api';
 import { startOfLocalDay } from '../datetime';
@@ -67,6 +68,7 @@ function useDashboardFilters() {
 export function MeetingsDashboard() {
   const { t } = useI18n();
   const returnTo = calendarReturnHref(useSearchParams());
+  const { canSchedule } = usePermissions();
   const createHref = returnTo ? `${newMeetingHref}?returnTo=${encodeURIComponent(returnTo)}` : newMeetingHref;
   const { status, scope, page, view, mode, dateParam, update, isNavigating } = useDashboardFilters();
   const [calendarSummary, setCalendarSummary] = useState<string>();
@@ -108,12 +110,14 @@ export function MeetingsDashboard() {
             <p className="tabular mt-1 text-sm text-muted-foreground">{t('meetings.count').replace('{n}', String(data.total))}</p>
           ) : null}
         </div>
-        <Button asChild>
-          <Link href={createHref}>
-            <Plus aria-hidden />
-            {t('meetings.schedule')}
-          </Link>
-        </Button>
+        {canSchedule ? (
+          <Button asChild>
+            <Link href={createHref}>
+              <Plus aria-hidden />
+              {t('meetings.schedule')}
+            </Link>
+          </Button>
+        ) : null}
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -182,9 +186,11 @@ export function MeetingsDashboard() {
           <CalendarPlus aria-hidden className="size-10 text-muted-foreground" />
           <h2 className="text-lg font-semibold">{t('meetings.empty.title')}</h2>
           <p className="text-sm text-muted-foreground">{filtered ? t('meetings.empty.filtered') : t('meetings.empty.body')}</p>
-          <Button asChild variant="outline">
-            <Link href={createHref}>{t('meetings.empty.cta')}</Link>
-          </Button>
+          {canSchedule ? (
+            <Button asChild variant="outline">
+              <Link href={createHref}>{t('meetings.empty.cta')}</Link>
+            </Button>
+          ) : null}
         </Card>
       ) : data ? (
         <>

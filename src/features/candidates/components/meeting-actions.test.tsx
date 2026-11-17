@@ -38,7 +38,7 @@ function mockApi(handlers: Record<string, Handler> = {}, meeting: Meeting = next
     const handler = handlers[`${method} ${path}`];
     if (handler) return handler(body, url);
     if (path === '/candidates/c1') return jsonResponse(200, { candidate: ALICE, upcoming: [meeting], history: [] } satisfies CandidateDetail);
-    if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'USER' } });
+    if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
     if (method === 'GET' && path === `/meetings/${meeting.id}`) return jsonResponse(200, { ...meeting, feedback: [] });
     throw new Error(`Unexpected request ${method} ${path}`);
   });
@@ -180,7 +180,7 @@ describe('Switching to another meeting of the candidate', () => {
       const method = init?.method ?? 'GET';
       calls.push({ method, path, search: url.search, body: init?.body ? JSON.parse(String(init.body)) : undefined });
       if (path === '/candidates/c1') return jsonResponse(200, { candidate: ALICE, upcoming: [next, other], history: [] } satisfies CandidateDetail);
-      if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'USER' } });
+      if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
       if (method === 'GET' && path === '/meetings/m1') return jsonResponse(200, { ...next, feedback: [] });
       if (method === 'GET' && path === '/meetings/m2') return jsonResponse(200, { ...other, feedback: [] });
       throw new Error(`Unexpected request ${method} ${path}`);
@@ -205,5 +205,32 @@ describe('Switching to another meeting of the candidate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'show m2' }));
     await screen.findByText('Final round', { selector: 'dd' });
     expect((screen.getByLabelText('Add feedback') as HTMLTextAreaElement).value).toBe('');
+  });
+});
+
+describe('Candidate summary actions by role (ADR-015)', () => {
+  const recruiter = { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } as const;
+
+  it('shows an interviewer only the feedback action', async () => {
+    mockApi();
+    renderWithProviders(<CandidateSummary id="c1" />, { user: { ...recruiter, role: 'INTERVIEWER' } });
+    expect((await screen.findAllByRole('button', { name: 'Add feedback' })).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Edit meeting' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel meeting' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+  });
+
+  it("lets a recruiter edit and cancel a colleague's meeting but not delete it", async () => {
+    mockApi({}, { ...next, createdById: 'someone-else', isMine: false });
+    renderWithProviders(<CandidateSummary id="c1" />, { user: recruiter });
+    expect(await screen.findByRole('link', { name: 'Edit meeting' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cancel meeting' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+  });
+
+  it('lets a recruiter delete a meeting they created', async () => {
+    mockApi();
+    renderWithProviders(<CandidateSummary id="c1" />, { user: recruiter });
+    expect(await screen.findByRole('button', { name: 'Delete' })).toBeTruthy();
   });
 });

@@ -8,11 +8,13 @@ import { StatusBadge } from '@/features/meetings/components/status-badge';
 import { formatMeetingWhen, isPastMeeting } from '@/features/meetings/datetime';
 import type { Meeting } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
+import { usePermissions } from '@/lib/permissions';
 import { editMeetingHref, meetingHref } from '@/lib/routes';
 
 /** Event trigger and detail popover. Candidate-less meetings link to the edit form. */
 export function EventPopover({ meeting, now, label, className, children }: { meeting: Meeting; now: Date | null; label: string; className: string; children: ReactNode }) {
   const { t, intl, locale } = useI18n();
+  const { canSchedule } = usePermissions();
   const where = meeting.meetingType
     ? [t(`meetings.type.${meeting.meetingType}`), meeting.meetingType === 'ONLINE' && meeting.provider ? t(`meetings.provider.${meeting.provider}`) : null]
         .filter(Boolean)
@@ -42,9 +44,11 @@ export function EventPopover({ meeting, now, label, className, children }: { mee
           ) : null}
         </dl>
         <div className="flex justify-end gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href={editMeetingHref(meeting.id)}>{t('candidate.edit')}</Link>
-          </Button>
+          {canSchedule ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={editMeetingHref(meeting.id)}>{t('candidate.edit')}</Link>
+            </Button>
+          ) : null}
           <Button asChild size="sm">
             <Link href={meetingHref(meeting)}>{t('calendar.viewDetails')}</Link>
           </Button>

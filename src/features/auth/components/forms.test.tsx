@@ -5,6 +5,7 @@ import { currentUserKey } from '@/components/shell/use-current-user';
 import { jsonResponse, renderWithProviders, router, setSearchParams } from '@/test/render';
 import { ForgotForm } from './forgot-form';
 import { LoginForm } from './login-form';
+import { RegisterForm } from './register-form';
 import { VerifyForm } from './verify-form';
 
 const CHALLENGE = '11111111-1111-4111-8111-111111111111';
@@ -159,4 +160,23 @@ describe('pending actions', () => {
       expect(resend.disabled).toBe(false);
     },
   );
+});
+
+describe('RegisterForm', () => {
+  it('sends the chosen role, recruiter by default', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(201, { challengeId: CHALLENGE, expiresAt: '2030-01-01T00:00:00.000Z' }));
+    renderWithProviders(<RegisterForm />, { user: null });
+    expect((screen.getByRole('radio', { name: /Recruiter/ }) as HTMLInputElement).checked).toBe(true);
+    await userEvent.type(screen.getByLabelText('Email'), 'i@b.co');
+    await userEvent.type(screen.getByLabelText('Password'), 'password1');
+    await userEvent.type(screen.getByLabelText('Confirm password'), 'password1');
+    await userEvent.click(screen.getByRole('radio', { name: /Interviewer/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      email: 'i@b.co',
+      password: 'password1',
+      role: 'INTERVIEWER',
+    });
+  });
 });

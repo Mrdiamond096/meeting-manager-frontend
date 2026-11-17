@@ -28,7 +28,11 @@ const withConfirm = <T extends z.ZodRawShape>(shape: T, field: 'password' | 'new
       ...msg('auth.validation.passwordMismatch'),
     });
 
-export const registerSchema = withConfirm({ email: emailField, password: passwordField }, 'password');
+export const REGISTER_ROLES = ['RECRUITER', 'INTERVIEWER'] as const;
+export const registerSchema = withConfirm(
+  { email: emailField, password: passwordField, role: z.enum(REGISTER_ROLES) },
+  'password',
+);
 export const forgotSchema = z.object({ email: emailField });
 export const resetSchema = withConfirm({ code: otpField, newPassword: passwordField }, 'newPassword');
 export const verifySchema = z.object({ code: otpField });

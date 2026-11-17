@@ -54,7 +54,7 @@ function mockApi({ detail, notes }: Setup = {}) {
     if (path === '/candidates/c1') {
       return detail ?? jsonResponse(200, { candidate: ALICE, upcoming: [next], history: [past, cancelled] } satisfies CandidateDetail);
     }
-    if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'USER' } });
+    if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
     if (path.startsWith('/meetings/')) {
       return (
         notes ?? jsonResponse(200, { ...next, feedback: [feedback('f1', 'Strong design skills', 'u1'), feedback('f2', 'Clear communicator', 'u2')] })
@@ -93,7 +93,7 @@ describe('CandidateSummary', () => {
 
   it('lists the notes of the shown meeting, labelling the current user\'s own', async () => {
     mockApi();
-    renderWithProviders(<CandidateSummary id="c1" />);
+    renderWithProviders(<CandidateSummary id="c1" />, { user: null });
     expect(await screen.findByText('Strong design skills')).toBeTruthy();
     expect(screen.getByText('Clear communicator')).toBeTruthy();
     expect(await screen.findByText(/^You ·/)).toBeTruthy();
