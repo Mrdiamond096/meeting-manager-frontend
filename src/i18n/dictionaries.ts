@@ -432,5 +432,5 @@ export const dictionaries: Record<Locale, Record<MessageKey, string>> = { en, th
 export const toLocale = (value: string | undefined): Locale =>
   (LOCALES as readonly string[]).includes(value ?? '') ? (value as Locale) : DEFAULT_LOCALE;
 
-/** Intl locale: Thai uses the Buddhist calendar and 24h time (Figma TH frames). */
+/** Intl locale: Thai uses the Buddhist calendar and 24-hour time. */
 export const intlLocale = (locale: Locale) => (locale === 'th' ? 'th-TH-u-ca-buddhist' : 'en-US');

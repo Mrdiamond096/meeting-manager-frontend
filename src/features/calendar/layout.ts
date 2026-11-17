@@ -1,7 +1,7 @@
 import type { Meeting } from '@/features/meetings/types';
 import { addDays, minutesInDay } from './dates';
 
-/** A meeting without an end is drawn as 30 minutes (the form's default length). */
+/** Display meetings without an end as 30 minutes, matching the API's range-overlap rule. */
 export const DEFAULT_MINUTES = 30;
 /** Short events still need room for their name. */
 const MIN_MINUTES = 20;

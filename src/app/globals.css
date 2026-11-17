@@ -1,7 +1,7 @@
 /*
  * Candidate Meeting Scheduler — Theme "Lagoon"
  * Tailwind CSS v4 + shadcn/ui token format
- * คัดลอกจาก docs/design/tokens/globals.css (umbrella repo) — import ใน src/app/layout.tsx
+ * Shared design tokens: docs/design/tokens/globals.css in the umbrella repository.
  */
 @import "tailwindcss";
 
@@ -40,9 +40,9 @@
   --warning: #8a5a00;   --warning-subtle: #fdf3dc;   /* Pending */
   --destructive: #b42318; --destructive-subtle: #fdecea; /* Cancelled / Delete */
   --destructive-foreground: #ffffff;
-  --info: #475467;      --info-subtle: #eef1f5;      /* Completed */
+  --info: #475467;      --info-subtle: #eef1f5;      /* Past meetings */
 
-  /* Charts (ถ้ามีสรุปสถิติ) */
+  /* Charts */
   --chart-1: #1f7a6d;
   --chart-2: #f4b23e;
   --chart-3: #6b8afd;
