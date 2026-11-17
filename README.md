@@ -78,8 +78,12 @@ the production Docker image. Dependabot proposes npm, Actions and Docker updates
 
 ```bash
 docker build --target prod --build-arg API_URL=http://api:3000 -t meeting-web .
-docker run -p 3000:3000 meeting-web
+docker run --rm --network meeting-backend_default -p 8080:3000 meeting-web   # → http://localhost:8080
 ```
+
+`api` resolves only inside a Docker network that has the API service in it. `meeting-backend_default` is the
+network of the backend's standalone `make up`; use your own network name elsewhere. Host port `8080` avoids the
+API's `3000`, and `http://localhost:8080` is already in the backend's default `ALLOWED_ORIGINS`.
 
 Next `standalone` output, run as `node`.
 
