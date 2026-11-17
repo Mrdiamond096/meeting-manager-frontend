@@ -16,7 +16,7 @@ import { parseDateParam, toDateParam } from '@/features/calendar/dates';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
 import { useActionNavigation } from '@/lib/use-action-navigation';
-import { newMeetingHref } from '@/lib/routes';
+import { calendarReturnHref, newMeetingHref } from '@/lib/routes';
 import { meetingKeys, meetingsApi } from '../api';
 import { startOfLocalDay } from '../datetime';
 import { MEETING_STATUSES, type ListMeetingsParams, type MeetingStatus } from '../types';
@@ -66,6 +66,8 @@ function useDashboardFilters() {
 
 export function MeetingsDashboard() {
   const { t } = useI18n();
+  const returnTo = calendarReturnHref(useSearchParams());
+  const createHref = returnTo ? `${newMeetingHref}?returnTo=${encodeURIComponent(returnTo)}` : newMeetingHref;
   const { status, scope, page, view, mode, dateParam, update, isNavigating } = useDashboardFilters();
   const [calendarSummary, setCalendarSummary] = useState<string>();
   const onCalendarSummary = useCallback((summary: string | undefined) => setCalendarSummary(summary), []);
@@ -107,7 +109,7 @@ export function MeetingsDashboard() {
           ) : null}
         </div>
         <Button asChild>
-          <Link href={newMeetingHref}>
+          <Link href={createHref}>
             <Plus aria-hidden />
             {t('meetings.schedule')}
           </Link>
@@ -181,7 +183,7 @@ export function MeetingsDashboard() {
           <h2 className="text-lg font-semibold">{t('meetings.empty.title')}</h2>
           <p className="text-sm text-muted-foreground">{filtered ? t('meetings.empty.filtered') : t('meetings.empty.body')}</p>
           <Button asChild variant="outline">
-            <Link href={newMeetingHref}>{t('meetings.empty.cta')}</Link>
+            <Link href={createHref}>{t('meetings.empty.cta')}</Link>
           </Button>
         </Card>
       ) : data ? (

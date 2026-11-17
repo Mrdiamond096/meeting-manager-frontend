@@ -6,6 +6,7 @@ import { fromLocalParts } from '../datetime';
 import type { CandidateSummary, Meeting } from '../types';
 import { EditMeeting } from './edit-meeting';
 import { MeetingForm } from './meeting-form';
+import NewMeetingPage from '@/app/(app)/meetings/new/page';
 
 let fetchMock: MockInstance<typeof fetch>;
 
@@ -367,5 +368,24 @@ describe('EditMeeting', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
     expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, description: 'note' });
+  });
+});
+
+
+describe('Cancel meeting creation', () => {
+  it('returns to the same calendar even when the form was opened directly or refreshed', async () => {
+    const returnTo = '/?view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false';
+    const page = await NewMeetingPage({ searchParams: Promise.resolve({ date: '2026-11-26', start: '09:00', returnTo }) });
+    renderWithProviders(page);
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(router.push).toHaveBeenCalledWith(returnTo);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('returns to the dashboard for ordinary creation', async () => {
+    renderWithProviders(await NewMeetingPage({ searchParams: Promise.resolve({}) }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(router.push).toHaveBeenCalledWith('/');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

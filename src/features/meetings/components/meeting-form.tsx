@@ -19,13 +19,14 @@ interface MeetingFormProps {
   /** Present when editing. */
   meeting?: Meeting;
   refreshing?: boolean;
+  cancelHref?: string;
   /** Called after a 409 so the container can refetch the latest version. */
   onReload?: () => void;
   /** Start picked from an empty calendar slot (new meetings only). */
   startAt?: { date: string; time: string };
 }
 
-export function MeetingForm({ meeting, onReload, startAt, refreshing }: MeetingFormProps) {
+export function MeetingForm({ meeting, onReload, startAt, refreshing, cancelHref = '/' }: MeetingFormProps) {
   const { t } = useI18n();
   const router = useActionNavigation();
   const editing = Boolean(meeting);
@@ -61,7 +62,7 @@ export function MeetingForm({ meeting, onReload, startAt, refreshing }: MeetingF
             variant="outline"
             disabled={save.isPending || isNavigating}
             loading={router.isNavigating}
-            onClick={() => router.push('/')}
+            onClick={() => router.push(cancelHref)}
           >
             {t('meetingForm.cancel')}
           </Button>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { ActionLink as Link } from '@/components/ui/action-link';
 import { useEffect, useState } from 'react';
@@ -7,7 +8,7 @@ import { formatTimeRange, isPastMeeting } from '@/features/meetings/datetime';
 import type { Meeting } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 import { cn } from '@/lib/cn';
-import { newMeetingAt } from '@/lib/routes';
+import { calendarReturnHref, newMeetingAt } from '@/lib/routes';
 import { isSameDay, toDateParam, weekDays } from '../dates';
 import { meetingsOnDay } from '../layout';
 import { EventPopover } from './event-popover';
@@ -18,6 +19,7 @@ const DOT = { CONFIRMED: 'bg-success', PENDING: 'bg-warning', CANCELLED: 'bg-mut
 /** Phones: the week as a list of days (ADR-014), since seven time columns do not fit. */
 export function DayAgenda({ date, meetings }: { date: Date; meetings: Meeting[] }) {
   const { t, intl, locale } = useI18n();
+  const returnTo = calendarReturnHref(useSearchParams());
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => setNow(new Date()), []);
   const heading = new Intl.DateTimeFormat(intl, { weekday: 'long', day: 'numeric', month: 'short' });
@@ -35,7 +37,7 @@ export function DayAgenda({ date, meetings }: { date: Date; meetings: Meeting[] 
                 {heading.format(day)}
               </h3>
               <Link
-                href={newMeetingAt(toDateParam(day), DAY_START)}
+                href={newMeetingAt(toDateParam(day), DAY_START, returnTo)}
                 aria-label={t('calendar.addOn').replace('{day}', fullDate.format(day))}
                 className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
