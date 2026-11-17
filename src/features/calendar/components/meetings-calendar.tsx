@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Alert } from '@/components/ui/alert';
+import { ActionStatus } from '@/components/ui/action-status';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { meetingKeys, meetingsApi } from '@/features/meetings/api';
@@ -137,6 +138,7 @@ function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSumm
         />
       </div>
 
+      {query.isFetching ? <ActionStatus /> : null}
       {query.isError ? (
         // Also shown above data kept from before a failed refresh, so stale events are never shown silently.
         <Alert tone="error">
@@ -146,7 +148,7 @@ function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSumm
               {t('error.requestId')}: {query.error.requestId}
             </p>
           ) : null}
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => void query.refetch()}>
+          <Button variant="outline" size="sm" className="mt-2" loading={query.isFetching} onClick={() => void query.refetch()}>
             {t('error.retry')}
           </Button>
         </Alert>

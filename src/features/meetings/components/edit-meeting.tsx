@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Alert } from '@/components/ui/alert';
+import { ActionStatus } from '@/components/ui/action-status';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useI18n } from '@/i18n/i18n-provider';
@@ -24,7 +25,13 @@ export function EditMeeting({ id }: { id: string }) {
       <Alert tone="error" className="mx-auto max-w-2xl">
         <p className="font-medium">{t(gone ? 'meetingForm.notFound' : 'meetingForm.loadError')}</p>
         {gone ? null : (
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => void query.refetch()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            loading={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
             {t('error.retry')}
           </Button>
         )}
@@ -44,5 +51,15 @@ export function EditMeeting({ id }: { id: string }) {
   }
 
   // Keyed by version so a reload after a 409 remounts the form with the fresh values.
-  return <MeetingForm key={query.data.version} meeting={query.data} onReload={() => void query.refetch()} />;
+  return (
+    <div className="flex flex-col gap-4">
+      {query.isFetching ? <ActionStatus /> : null}
+      <MeetingForm
+        key={query.data.version}
+        meeting={query.data}
+        refreshing={query.isFetching}
+        onReload={() => void query.refetch()}
+      />
+    </div>
+  );
 }

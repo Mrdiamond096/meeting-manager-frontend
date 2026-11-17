@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useTransition, type ReactNode } from 'react';
 import { dictionaries, intlLocale, LOCALE_COOKIE, type Locale, type MessageKey } from './dictionaries';
 
 interface I18nValue {
   locale: Locale;
+  isChangingLocale: boolean;
   intl: string;
   t: (key: MessageKey) => string;
   setLocale: (locale: Locale) => void;
@@ -15,16 +16,17 @@ const I18nContext = createContext<I18nValue | null>(null);
 
 export function I18nProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
   const router = useRouter();
+  const [isChangingLocale, startTransition] = useTransition();
   const setLocale = useCallback(
     (next: Locale) => {
       document.cookie = `${LOCALE_COOKIE}=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
-      router.refresh();
+      startTransition(() => router.refresh());
     },
     [router],
   );
   const value = useMemo<I18nValue>(
-    () => ({ locale, intl: intlLocale(locale), t: (key) => dictionaries[locale][key], setLocale }),
-    [locale, setLocale],
+    () => ({ locale, isChangingLocale, intl: intlLocale(locale), t: (key) => dictionaries[locale][key], setLocale }),
+    [locale, setLocale, isChangingLocale],
   );
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

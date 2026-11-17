@@ -1,8 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -70,11 +69,11 @@ export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; can
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button variant="ghost" onClick={() => open('delete')}>
+      <Button variant="ghost" disabled={busy} onClick={() => open('delete')}>
         {t('candidate.actions.delete')}
       </Button>
       {meeting.status !== 'CANCELLED' ? (
-        <Button variant="outline" onClick={() => open('cancel')}>
+        <Button variant="outline" disabled={busy} onClick={() => open('cancel')}>
           {t('candidate.actions.cancel')}
         </Button>
       ) : null}
@@ -97,13 +96,11 @@ export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; can
               {t(confirm === 'delete' ? 'candidate.actions.back' : 'candidate.actions.keep')}
             </Button>
             {confirm === 'delete' ? (
-              <Button variant="destructive" disabled={busy} onClick={() => remove.mutate()}>
-                {remove.isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
+              <Button variant="destructive" loading={remove.isPending} disabled={busy} onClick={() => remove.mutate()}>
                 {t('candidate.delete.confirm')}
               </Button>
             ) : (
-              <Button disabled={busy} onClick={() => cancel.mutate()}>
-                {cancel.isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
+              <Button loading={cancel.isPending} disabled={busy} onClick={() => cancel.mutate()}>
                 {t('candidate.actions.cancel')}
               </Button>
             )}

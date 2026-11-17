@@ -1,9 +1,9 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Alert } from '@/components/ui/alert';
+import { ActionStatus } from '@/components/ui/action-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FieldError, Label, Textarea } from '@/components/ui/input';
@@ -37,6 +37,7 @@ export function MeetingNotes({ meetingId }: { meetingId: string }) {
         <CardTitle>{t('candidate.notes.title')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+      {query.isFetching ? <ActionStatus /> : null}
         {query.isError ? (
           <Alert tone="error">
             <p className="font-medium">{t('candidate.notes.loadError')}</p>
@@ -45,7 +46,7 @@ export function MeetingNotes({ meetingId }: { meetingId: string }) {
                 {t('error.requestId')}: {query.error.requestId}
               </p>
             ) : null}
-            <Button variant="outline" size="sm" className="mt-2" onClick={() => void query.refetch()}>
+            <Button variant="outline" size="sm" className="mt-2" loading={query.isFetching} onClick={() => void query.refetch()}>
               {t('error.retry')}
             </Button>
           </Alert>
@@ -108,6 +109,7 @@ function AddFeedback({ meetingId }: { meetingId: string }) {
     <form noValidate onSubmit={submit} className="mt-2 flex flex-col gap-2">
       <Label htmlFor={FEEDBACK_FIELD_ID}>{t('candidate.notes.add')}</Label>
       <Textarea
+        disabled={add.isPending}
         id={FEEDBACK_FIELD_ID}
         value={body}
         placeholder={t('candidate.notes.placeholder')}
@@ -116,8 +118,7 @@ function AddFeedback({ meetingId }: { meetingId: string }) {
         onChange={(e) => setBody(e.target.value)}
       />
       <FieldError id={errorId}>{error ?? undefined}</FieldError>
-      <Button type="submit" className="self-end" disabled={add.isPending}>
-        {add.isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
+      <Button type="submit" className="self-end" loading={add.isPending}>
         {t('candidate.notes.add')}
       </Button>
     </form>

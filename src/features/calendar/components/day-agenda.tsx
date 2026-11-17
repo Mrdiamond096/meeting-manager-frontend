@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus } from 'lucide-react';
-import Link from 'next/link';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { useEffect, useState } from 'react';
 import { formatTimeRange, isPastMeeting } from '@/features/meetings/datetime';
 import type { Meeting } from '@/features/meetings/types';

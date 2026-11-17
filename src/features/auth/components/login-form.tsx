@@ -2,12 +2,13 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { ActionLink as Link } from '@/components/ui/action-link';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n/i18n-provider';
+import { useActionNavigation } from '@/lib/use-action-navigation';
 import type { MessageKey } from '@/i18n/dictionaries';
 import { authApi } from '../api';
 import { rememberChallengeEmail } from '../challenge-email';
@@ -19,7 +20,7 @@ import { TextField } from './text-field';
 
 export function LoginForm() {
   const { t } = useI18n();
-  const router = useRouter();
+  const router = useActionNavigation();
   const params = useSearchParams();
   const next = safeNext(params.get('next'));
   const form = useForm<LoginValues>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } });
@@ -52,7 +53,7 @@ export function LoginForm() {
           error={err(form.formState.errors.password?.message)}
           {...form.register('password')}
         />
-        <Button type="submit" disabled={login.isPending}>
+        <Button type="submit" loading={login.isPending || router.isNavigating}>
           {t('auth.login.submit')}
         </Button>
         <div className="flex justify-between text-sm">

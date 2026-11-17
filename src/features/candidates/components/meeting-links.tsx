@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/features/meetings/components/status-badge';
 import { isPastMeeting } from '@/features/meetings/datetime';

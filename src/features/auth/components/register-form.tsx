@@ -2,11 +2,11 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n/i18n-provider';
+import { useActionNavigation } from '@/lib/use-action-navigation';
 import type { MessageKey } from '@/i18n/dictionaries';
 import { authApi } from '../api';
 import { rememberChallengeEmail } from '../challenge-email';
@@ -18,7 +18,7 @@ import { TextField } from './text-field';
 
 export function RegisterForm() {
   const { t } = useI18n();
-  const router = useRouter();
+  const router = useActionNavigation();
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { email: '', password: '', confirmPassword: '' },
@@ -44,7 +44,7 @@ export function RegisterForm() {
         <TextField label={t('auth.field.email')} type="email" autoComplete="email" placeholder="name@company.com" error={err(errors.email?.message)} {...form.register('email')} />
         <TextField label={t('auth.field.password')} type="password" autoComplete="new-password" placeholder={t('auth.field.passwordHint')} error={err(errors.password?.message)} {...form.register('password')} />
         <TextField label={t('auth.field.confirmPassword')} type="password" autoComplete="new-password" error={err(errors.confirmPassword?.message)} {...form.register('confirmPassword')} />
-        <Button type="submit" disabled={register.isPending}>
+        <Button type="submit" loading={register.isPending || router.isNavigating}>
           {t('auth.register.submit')}
         </Button>
         <Link href="/login" className="text-sm text-primary hover:underline">

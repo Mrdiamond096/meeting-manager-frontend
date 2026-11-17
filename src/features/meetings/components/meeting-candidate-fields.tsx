@@ -81,7 +81,7 @@ export function MeetingCandidateFields() {
                   {t('error.requestId')}: {positions.error.requestId}
                 </p>
               ) : null}
-              <Button variant="outline" size="sm" className="mt-2" onClick={() => void positions.refetch()}>
+              <Button variant="outline" size="sm" className="mt-2" loading={positions.isFetching} onClick={() => void positions.refetch()}>
                 {t('error.retry')}
               </Button>
             </Alert>

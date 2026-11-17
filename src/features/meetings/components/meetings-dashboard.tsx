@@ -2,10 +2,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { CalendarPlus, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { ActionLink as Link } from '@/components/ui/action-link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
+import { ActionStatus } from '@/components/ui/action-status';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/segmented';
@@ -14,6 +15,7 @@ import { MeetingsCalendar, type CalendarMode } from '@/features/calendar/compone
 import { parseDateParam, toDateParam } from '@/features/calendar/dates';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
+import { useActionNavigation } from '@/lib/use-action-navigation';
 import { newMeetingHref } from '@/lib/routes';
 import { meetingKeys, meetingsApi } from '../api';
 import { startOfLocalDay } from '../datetime';
@@ -31,7 +33,7 @@ const toStatus = (v: string | null): StatusFilter => (MEETING_STATUSES.includes(
 const toPage = (v: string | null) => (v && /^\d+$/.test(v) && Number(v) >= 1 ? Number(v) : 1);
 
 function useDashboardFilters() {
-  const router = useRouter();
+  const router = useActionNavigation();
   const pathname = usePathname();
   const params = useSearchParams();
   const status = toStatus(params.get('status'));
@@ -59,12 +61,12 @@ function useDashboardFilters() {
     const qs = q.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
-  return { status, scope, page, view, mode, dateParam, update };
+  return { status, scope, page, view, mode, dateParam, update, isNavigating: router.isNavigating };
 }
 
 export function MeetingsDashboard() {
   const { t } = useI18n();
-  const { status, scope, page, view, mode, dateParam, update } = useDashboardFilters();
+  const { status, scope, page, view, mode, dateParam, update, isNavigating } = useDashboardFilters();
   const [calendarSummary, setCalendarSummary] = useState<string>();
   const onCalendarSummary = useCallback((summary: string | undefined) => setCalendarSummary(summary), []);
   // Fixed per visit so the query key stays stable; "upcoming" = from the start of today (local).
@@ -142,6 +144,7 @@ export function MeetingsDashboard() {
         />
       </div>
 
+      {isNavigating || (view === 'list' && query.isFetching) ? <ActionStatus /> : null}
       {view === 'calendar' ? (
         <MeetingsCalendar
           date={parseDateParam(dateParam, now)}
@@ -160,7 +163,7 @@ export function MeetingsDashboard() {
               {t('error.requestId')}: {query.error.requestId}
             </p>
           ) : null}
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => void query.refetch()}>
+          <Button variant="outline" size="sm" className="mt-2" loading={query.isFetching} onClick={() => void query.refetch()}>
             {t('error.retry')}
           </Button>
         </Alert>
@@ -198,11 +201,11 @@ export function MeetingsDashboard() {
                 .replace('{total}', String(data.total))}
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={data.page <= 1} onClick={() => update({ page: data.page - 1 })}>
+              <Button variant="outline" size="sm" disabled={isNavigating || query.isFetching || data.page <= 1} onClick={() => update({ page: data.page - 1 })}>
                 <ChevronLeft aria-hidden />
                 {t('meetings.pagination.prev')}
               </Button>
-              <Button variant="outline" size="sm" disabled={data.page >= lastPage} onClick={() => update({ page: data.page + 1 })}>
+              <Button variant="outline" size="sm" disabled={isNavigating || query.isFetching || data.page >= lastPage} onClick={() => update({ page: data.page + 1 })}>
                 {t('meetings.pagination.next')}
                 <ChevronRight aria-hidden />
               </Button>

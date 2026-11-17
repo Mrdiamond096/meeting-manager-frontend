@@ -1,8 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useActionNavigation } from '@/lib/use-action-navigation';
 import { useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Alert } from '@/components/ui/alert';
@@ -19,22 +18,27 @@ import { MeetingScheduleFields } from './meeting-schedule-fields';
 interface MeetingFormProps {
   /** Present when editing. */
   meeting?: Meeting;
+  refreshing?: boolean;
   /** Called after a 409 so the container can refetch the latest version. */
   onReload?: () => void;
   /** Start picked from an empty calendar slot (new meetings only). */
   startAt?: { date: string; time: string };
 }
 
-export function MeetingForm({ meeting, onReload, startAt }: MeetingFormProps) {
+export function MeetingForm({ meeting, onReload, startAt, refreshing }: MeetingFormProps) {
   const { t } = useI18n();
-  const router = useRouter();
+  const router = useActionNavigation();
   const editing = Boolean(meeting);
   const initial = useMemo(
     () => (meeting ? meetingToFormValues(meeting) : emptyFormValues(new Date(), startAt)),
     [meeting, startAt?.date, startAt?.time],
   );
   const form = useForm<MeetingFormValues>({ resolver: zodResolver(meetingFormSchema), defaultValues: initial });
-  const { save, formError, conflict, setConflict } = useSaveMeeting({ meeting, initial, setError: form.setError });
+  const { save, formError, conflict, setConflict, isNavigating } = useSaveMeeting({
+    meeting,
+    initial,
+    setError: form.setError,
+  });
 
   return (
     <FormProvider {...form}>
@@ -53,11 +57,15 @@ export function MeetingForm({ meeting, onReload, startAt }: MeetingFormProps) {
         <MeetingDetailsFields meeting={meeting} />
 
         <div className="flex justify-end gap-3 border-t border-border pt-6">
-          <Button variant="outline" onClick={() => router.push('/')}>
+          <Button
+            variant="outline"
+            disabled={save.isPending || isNavigating}
+            loading={router.isNavigating}
+            onClick={() => router.push('/')}
+          >
             {t('meetingForm.cancel')}
           </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
+          <Button type="submit" loading={save.isPending || isNavigating} disabled={router.isNavigating || refreshing}>
             {t(editing ? 'meetingForm.submit.edit' : 'meetingForm.submit.create')}
           </Button>
         </div>

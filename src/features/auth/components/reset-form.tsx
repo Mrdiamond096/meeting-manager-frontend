@@ -2,12 +2,13 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { ActionLink as Link } from '@/components/ui/action-link';
+import { useSearchParams } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/input';
 import { useI18n } from '@/i18n/i18n-provider';
+import { useActionNavigation } from '@/lib/use-action-navigation';
 import type { MessageKey } from '@/i18n/dictionaries';
 import { authApi } from '../api';
 import { toAuthError } from '../errors';
@@ -19,7 +20,7 @@ import { TextField } from './text-field';
 
 export function ResetForm() {
   const { t } = useI18n();
-  const router = useRouter();
+  const router = useActionNavigation();
   const challengeId = useSearchParams().get('c');
   const form = useForm<ResetValues>({
     resolver: zodResolver(resetSchema),
@@ -64,7 +65,7 @@ export function ResetForm() {
         </div>
         <TextField label={t('auth.field.newPassword')} type="password" autoComplete="new-password" placeholder={t('auth.field.passwordHint')} error={err(errors.newPassword?.message)} {...form.register('newPassword')} />
         <TextField label={t('auth.field.confirmPassword')} type="password" autoComplete="new-password" error={err(errors.confirmPassword?.message)} {...form.register('confirmPassword')} />
-        <Button type="submit" disabled={reset.isPending}>
+        <Button type="submit" loading={reset.isPending || router.isNavigating}>
           {t('auth.reset.submit')}
         </Button>
       </form>

@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowRight, CalendarDays, MapPin, Video } from 'lucide-react';
-import Link from 'next/link';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { Card } from '@/components/ui/card';
 import { useI18n } from '@/i18n/i18n-provider';
 import { cn } from '@/lib/cn';

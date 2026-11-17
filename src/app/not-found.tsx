@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { ActionLink as Link } from '@/components/ui/action-link';
 import { buttonVariants } from '@/components/ui/button';
 import { getT } from '@/i18n/server';
 
