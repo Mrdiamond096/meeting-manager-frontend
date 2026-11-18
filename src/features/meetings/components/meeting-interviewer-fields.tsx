@@ -52,8 +52,8 @@ export function MeetingInterviewerFields({ meeting }: { meeting?: Meeting }) {
             const person = people.find((p) => p.id === value) ?? query.data?.find((p) => p.id === value);
             if (!person) return null;
             return (
-                <li key={value} className="flex max-w-full items-center gap-2 rounded-md bg-secondary px-3 py-1 text-sm">
-                  <span className="min-w-0 break-all">{person.email}</span>
+              <li key={value} className="flex max-w-full items-center gap-2 rounded-md bg-secondary px-3 py-1 text-sm">
+                <span className="min-w-0 break-all">{person.email}</span>
                 {canSchedule ? (
                   <Button
                     size="sm"
@@ -106,7 +106,7 @@ export function MeetingInterviewerFields({ meeting }: { meeting?: Meeting }) {
             <ul className="flex max-h-56 flex-col gap-2 overflow-y-auto">
               {query.data?.map((person) => (
                 <li key={person.id}>
-                      <label className="flex min-w-0 items-center gap-2 text-sm">
+                  <label className="flex min-w-0 items-center gap-2 text-sm">
                     <input
                       type="checkbox"
                       className="accent-primary"
@@ -114,7 +114,7 @@ export function MeetingInterviewerFields({ meeting }: { meeting?: Meeting }) {
                       disabled={!selected.includes(person.id) && selected.length >= 50}
                       onChange={() => toggle(person)}
                     />
-                        <span className="min-w-0 break-all">{person.email}</span>
+                    <span className="min-w-0 break-all">{person.email}</span>
                   </label>
                 </li>
               ))}

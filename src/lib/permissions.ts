@@ -13,8 +13,8 @@ export const canManageMeeting = (
 ) =>
   Boolean(
     user &&
-    (canSchedule(user.role) ||
-      (user.role === 'INTERVIEWER' && (meeting.interviewers ?? []).some((person) => person.id === user.id))),
+      (canSchedule(user.role) ||
+        (user.role === 'INTERVIEWER' && (meeting.interviewers ?? []).some((person) => person.id === user.id))),
   );
 
 export const canDeleteMeeting = (
