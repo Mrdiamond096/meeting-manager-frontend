@@ -9,6 +9,7 @@ export type CandidateMode = 'none' | 'existing' | 'new';
 export const KEEP_END = 'keep';
 
 export interface MeetingFormValues {
+  interviewerIds: string[];
   candidateMode: CandidateMode;
   candidate: CandidateSummary | null;
   newName: string;
@@ -27,6 +28,7 @@ export interface MeetingFormValues {
 /** Messages are i18n keys (resolved by the form), like the auth schemas. */
 export const meetingFormSchema = z
   .object({
+    interviewerIds: z.array(z.string()).max(50, 'meetings.validation.interviewersMax'),
     candidateMode: z.enum(['none', 'existing', 'new']),
     candidate: z.custom<CandidateSummary | null>(),
     newName: z.string(),
@@ -47,8 +49,10 @@ export const meetingFormSchema = z
     if (v.candidateMode === 'new') {
       const name = v.newName.trim();
       if (!name) ctx.addIssue({ code: 'custom', path: ['newName'], message: 'meetings.validation.nameRequired' });
-      else if (name.length > 120) ctx.addIssue({ code: 'custom', path: ['newName'], message: 'meetings.validation.nameMax' });
-      if (!v.newPosition) ctx.addIssue({ code: 'custom', path: ['newPosition'], message: 'meetings.validation.positionRequired' });
+      else if (name.length > 120)
+        ctx.addIssue({ code: 'custom', path: ['newName'], message: 'meetings.validation.nameMax' });
+      if (!v.newPosition)
+        ctx.addIssue({ code: 'custom', path: ['newPosition'], message: 'meetings.validation.positionRequired' });
     }
     if (v.endTime && v.endTime !== KEEP_END && v.startTime && v.endTime <= v.startTime) {
       ctx.addIssue({ code: 'custom', path: ['endTime'], message: 'meetings.validation.endAfterStart' });
@@ -75,6 +79,7 @@ export function emptyFormValues(now: Date, at?: { date: string; time: string }):
   const s = toLocalParts(start.toISOString());
   const e = toLocalParts(end.toISOString());
   return {
+    interviewerIds: [],
     candidateMode: 'none',
     candidate: null,
     newName: '',
@@ -95,6 +100,7 @@ export function meetingToFormValues(m: Meeting): MeetingFormValues {
   const start = toLocalParts(m.dueDate);
   const end = m.endAt ? toLocalParts(m.endAt) : null;
   return {
+    interviewerIds: (m.interviewers ?? []).map((person) => person.id),
     candidateMode: m.candidate ? 'existing' : 'none',
     candidate: m.candidate,
     newName: '',
@@ -118,6 +124,7 @@ const instants = (v: MeetingFormValues) => ({
 export function toCreateBody(v: MeetingFormValues): CreateMeetingBody {
   const { dueDate, endAt } = instants(v);
   return {
+    ...(v.interviewerIds.length ? { interviewerIds: v.interviewerIds } : {}),
     title: v.title.trim(),
     description: v.description.trim(),
     dueDate,
@@ -131,7 +138,12 @@ export function toCreateBody(v: MeetingFormValues): CreateMeetingBody {
 }
 
 /** `undefined` = leave the end as it is. */
-function nextEndAt(original: Meeting, initial: MeetingFormValues, v: MeetingFormValues, dueDate: string): string | null | undefined {
+function nextEndAt(
+  original: Meeting,
+  initial: MeetingFormValues,
+  v: MeetingFormValues,
+  dueDate: string,
+): string | null | undefined {
   if (v.endTime !== initial.endTime) return v.endTime ? fromLocalParts(v.date, v.endTime) : null;
   if (v.date === initial.date) return undefined;
   if (v.endTime === KEEP_END) {
@@ -145,8 +157,15 @@ function nextEndAt(original: Meeting, initial: MeetingFormValues, v: MeetingForm
  * Sends only what changed. Date/time fields the user did not touch keep the original instants, so a meeting whose
  * end falls on another day (not editable with one date field) is never rewritten by accident.
  */
-export function toUpdateBody(original: Meeting, initial: MeetingFormValues, v: MeetingFormValues): UpdateMeetingBody | null {
+export function toUpdateBody(
+  original: Meeting,
+  initial: MeetingFormValues,
+  v: MeetingFormValues,
+): UpdateMeetingBody | null {
   const body: UpdateMeetingBody = { version: original.version };
+  const previous = (original.interviewers ?? []).map((person) => person.id);
+  if (v.interviewerIds.length !== previous.length || v.interviewerIds.some((id) => !previous.includes(id)))
+    body.interviewerIds = v.interviewerIds;
   if (v.title.trim() !== original.title) body.title = v.title.trim();
   if (v.description.trim() !== original.description) body.description = v.description.trim();
 
@@ -173,6 +192,7 @@ export function toUpdateBody(original: Meeting, initial: MeetingFormValues, v: M
 }
 
 const FIELD_BY_PATH: Record<string, keyof MeetingFormValues> = {
+  interviewerIds: 'interviewerIds',
   title: 'title',
   description: 'description',
   dueDate: 'date',
@@ -189,8 +209,9 @@ export function mapApiErrors(details: ApiErrorDetail[] = []) {
   const fields: Partial<Record<keyof MeetingFormValues, string>> = {};
   const unmapped: string[] = [];
   for (const d of details) {
-    const field = FIELD_BY_PATH[d.path.replace(/^body\./, '')];
-    if (field) fields[field] ??= d.message;
+    const path = d.path.replace(/^body\./, '');
+    const field = FIELD_BY_PATH[path] ?? (path.startsWith('interviewerIds.') ? 'interviewerIds' : undefined);
+    if (field) fields[field] ??= field === 'interviewerIds' ? 'meetings.validation.interviewersUnavailable' : d.message;
     else unmapped.push(d.message);
   }
   return { fields, unmapped };

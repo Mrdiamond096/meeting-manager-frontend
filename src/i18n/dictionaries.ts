@@ -4,6 +4,21 @@ export const DEFAULT_LOCALE: Locale = 'en';
 export const LOCALE_COOKIE = 'lang';
 
 const en = {
+  'meetings.validation.interviewersUnavailable':
+    'Some selected interviewers are unavailable. Refresh the list and try again.',
+  'meetings.filter.assigned': 'Assigned to me',
+  'meetings.empty.assigned': 'No meetings assigned to you',
+  'meetings.empty.assignmentHint': 'Ask a recruiter to assign interviewers to a meeting, or view everyone’s meetings.',
+  'meetings.validation.interviewersMax': 'Select at most 50 interviewers',
+  'assignment.title': 'Interviewers',
+  'assignment.hint':
+    'Assigned interviewers can edit or cancel this meeting. Only recruiters and admins can change assignments.',
+  'assignment.choose': 'Assign interviewers',
+  'assignment.search': 'Search interviewer email',
+  'assignment.empty': 'No verified interviewers found',
+  'assignment.none': 'No interviewers assigned',
+  'assignment.remove': 'Remove {email}',
+  'assignment.error': 'Could not load interviewers',
   'loading.page': 'Opening page…',
   'loading.data': 'Loading updates…',
   'loading.logout': 'Logging out…',
@@ -31,8 +46,8 @@ const en = {
   'auth.role.RECRUITER': 'Recruiter',
   'auth.role.RECRUITER.hint': 'Schedule, edit and cancel interviews',
   'auth.role.INTERVIEWER': 'Interviewer',
-  'auth.role.INTERVIEWER.hint': 'View interviews and add feedback',
-  'meetings.forbidden': 'Your role cannot schedule or edit meetings. Ask a recruiter.',
+  'auth.role.INTERVIEWER.hint': 'Edit assigned interviews and add feedback',
+  'meetings.forbidden': 'You cannot manage this meeting. Ask a recruiter.',
   'auth.field.password': 'Password',
   'auth.field.passwordHint': 'At least 8 characters',
   'auth.field.confirmPassword': 'Confirm password',
@@ -148,7 +163,8 @@ const en = {
   'meetingForm.loadError': 'Could not load this meeting',
   'meetingForm.notFound': 'This meeting no longer exists',
   'meetingForm.conflict.title': 'This meeting was updated elsewhere',
-  'meetingForm.conflict.body': 'Someone changed this meeting while you were editing. Reload to see the latest version; your edits will be discarded.',
+  'meetingForm.conflict.body':
+    'Someone changed this meeting while you were editing. Reload to see the latest version; your edits will be discarded.',
   'meetingForm.conflict.reload': 'Reload',
   'meetingForm.error.transition': 'This status change is not allowed.',
   'meetingForm.error.candidateGone': 'The selected candidate no longer exists. Pick another one.',
@@ -221,13 +237,27 @@ const en = {
   'candidate.delete.done': 'Meeting deleted',
   'candidate.actions.error': 'That did not work. Try again.',
   'candidate.conflict.title': 'This meeting was changed',
-  'candidate.conflict.body': 'Someone else changed or removed this meeting. Reload to see the latest version, then try again.',
+  'candidate.conflict.body':
+    'Someone else changed or removed this meeting. Reload to see the latest version, then try again.',
   'candidate.conflict.reload': 'Reload',
 } as const;
 
 export type MessageKey = keyof typeof en;
 
 const th: Record<MessageKey, string> = {
+  'meetings.validation.interviewersUnavailable': 'ผู้สัมภาษณ์ที่เลือกบางคนใช้งานไม่ได้ กรุณาโหลดรายชื่อใหม่แล้วลองอีกครั้ง',
+  'meetings.filter.assigned': 'มอบหมายให้ฉัน',
+  'meetings.empty.assigned': 'ยังไม่มีนัดที่มอบหมายให้คุณ',
+  'meetings.empty.assignmentHint': 'ให้ผู้สรรหามอบหมายนัดให้คุณ หรือสลับไปดูนัดของทุกคน',
+  'meetings.validation.interviewersMax': 'เลือกผู้สัมภาษณ์ได้ไม่เกิน 50 คน',
+  'assignment.title': 'ผู้สัมภาษณ์ที่ได้รับมอบหมาย',
+  'assignment.hint': 'ผู้ที่ได้รับมอบหมายแก้ไขหรือยกเลิกนัดนี้ได้ เฉพาะผู้สรรหาและผู้ดูแลระบบที่เปลี่ยนรายชื่อได้',
+  'assignment.choose': 'เลือกผู้สัมภาษณ์',
+  'assignment.search': 'ค้นหาอีเมลผู้สัมภาษณ์',
+  'assignment.empty': 'ไม่พบผู้สัมภาษณ์ที่ยืนยันบัญชีแล้ว',
+  'assignment.none': 'ยังไม่ได้มอบหมายผู้สัมภาษณ์',
+  'assignment.remove': 'นำ {email} ออก',
+  'assignment.error': 'โหลดรายชื่อผู้สัมภาษณ์ไม่สำเร็จ',
   'loading.page': 'กำลังเปิดหน้า…',
   'loading.data': 'กำลังโหลดข้อมูล…',
   'loading.logout': 'กำลังออกจากระบบ…',
@@ -255,8 +285,8 @@ const th: Record<MessageKey, string> = {
   'auth.role.RECRUITER': 'ผู้สรรหา (Recruiter)',
   'auth.role.RECRUITER.hint': 'สร้าง แก้ไข และยกเลิกนัดสัมภาษณ์',
   'auth.role.INTERVIEWER': 'ผู้สัมภาษณ์ (Interviewer)',
-  'auth.role.INTERVIEWER.hint': 'ดูนัดสัมภาษณ์และเพิ่มบันทึกผล',
-  'meetings.forbidden': 'บทบาทของคุณสร้างหรือแก้ไขนัดไม่ได้ กรุณาติดต่อผู้สรรหา',
+  'auth.role.INTERVIEWER.hint': 'แก้ไขนัดที่ได้รับมอบหมายและเพิ่มบันทึกผล',
+  'meetings.forbidden': 'คุณไม่มีสิทธิ์จัดการนัดนี้ กรุณาติดต่อผู้สรรหา',
   'auth.field.password': 'รหัสผ่าน',
   'auth.field.passwordHint': 'อย่างน้อย 8 ตัวอักษร',
   'auth.field.confirmPassword': 'ยืนยันรหัสผ่าน',

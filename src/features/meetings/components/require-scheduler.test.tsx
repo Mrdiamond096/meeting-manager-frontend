@@ -17,6 +17,7 @@ const meeting: Meeting = {
   meetingType: 'ONSITE',
   provider: null,
   candidate: null,
+  interviewers: [],
   createdById: 'u-rec',
   isMine: false,
   version: 2,
@@ -66,7 +67,7 @@ describe('RequireScheduler (ADR-015)', () => {
     renderWithProviders(newForm(), { user: null });
     expect(screen.queryByLabelText('Title')).toBeNull();
     await act(async () => answerMe('INTERVIEWER'));
-    expect(await screen.findByText(/Your role cannot schedule or edit meetings/)).toBeTruthy();
+    expect(await screen.findByText(/You cannot manage this meeting/)).toBeTruthy();
     expect(screen.queryByLabelText('Title')).toBeNull();
   });
 
@@ -94,7 +95,7 @@ describe('RequireScheduler (ADR-015)', () => {
     expect(notes.textContent).toBe('Bring the laptop.\nRoom 4A, second floor');
     expect(notes.className).toContain('whitespace-pre-wrap');
     expect(screen.queryByText('edit form')).toBeNull();
-    expect(screen.queryByText(/Your role cannot/)).toBeNull();
+    expect(screen.queryByText(/You cannot manage/)).toBeNull();
     expect(await screen.findByRole('button', { name: 'Add feedback' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
     expect(fetchMock).toHaveBeenCalled();

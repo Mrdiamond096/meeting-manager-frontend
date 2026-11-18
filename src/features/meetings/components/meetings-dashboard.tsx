@@ -30,7 +30,8 @@ type StatusFilter = MeetingStatus | 'ALL';
 type Scope = 'all' | 'mine';
 type View = 'list' | 'calendar';
 
-const toStatus = (v: string | null): StatusFilter => (MEETING_STATUSES.includes(v as MeetingStatus) ? (v as MeetingStatus) : 'ALL');
+const toStatus = (v: string | null): StatusFilter =>
+  MEETING_STATUSES.includes(v as MeetingStatus) ? (v as MeetingStatus) : 'ALL';
 const toPage = (v: string | null) => (v && /^\d+$/.test(v) && Number(v) >= 1 ? Number(v) : 1);
 
 function useDashboardFilters() {
@@ -46,7 +47,14 @@ function useDashboardFilters() {
   const dateParam = params.get('date');
   const mode: CalendarMode = params.get('mode') === 'month' ? 'month' : 'week';
 
-  function update(next: { status?: StatusFilter; scope?: Scope; page?: number; view?: View; date?: Date; mode?: CalendarMode }) {
+  function update(next: {
+    status?: StatusFilter;
+    scope?: Scope;
+    page?: number;
+    view?: View;
+    date?: Date;
+    mode?: CalendarMode;
+  }) {
     const q = new URLSearchParams();
     const s = next.status ?? status;
     const sc = next.scope ?? scope;
@@ -68,7 +76,8 @@ function useDashboardFilters() {
 export function MeetingsDashboard() {
   const { t } = useI18n();
   const returnTo = calendarReturnHref(useSearchParams());
-  const { canSchedule } = usePermissions();
+  const { canSchedule, user, userQuery } = usePermissions();
+  const interviewer = user?.role === 'INTERVIEWER';
   const createHref = returnTo ? `${newMeetingHref}?returnTo=${encodeURIComponent(returnTo)}` : newMeetingHref;
   const { status, scope, page, view, mode, dateParam, update, isNavigating } = useDashboardFilters();
   const [calendarSummary, setCalendarSummary] = useState<string>();
@@ -80,13 +89,13 @@ export function MeetingsDashboard() {
     pageSize: PAGE_SIZE,
     from: startOfLocalDay(now).toISOString(),
     ...(status !== 'ALL' ? { status } : {}),
-    ...(scope === 'mine' ? { mine: true } : {}),
+    ...(scope === 'mine' ? (interviewer ? { assignedToMe: true } : { mine: true }) : {}),
   };
   const query = useQuery({
     queryKey: meetingKeys.list(params),
     queryFn: ({ signal }) => meetingsApi.list(params, signal),
     placeholderData: (previous) => previous,
-    enabled: view === 'list',
+    enabled: view === 'list' && Boolean(user),
   });
   const data = query.data;
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
@@ -105,9 +114,13 @@ export function MeetingsDashboard() {
             {t('meetings.title')}
           </h1>
           {view === 'calendar' ? (
-            calendarSummary ? <p className="tabular mt-1 text-sm text-muted-foreground">{calendarSummary}</p> : null
+            calendarSummary ? (
+              <p className="tabular mt-1 text-sm text-muted-foreground">{calendarSummary}</p>
+            ) : null
           ) : data ? (
-            <p className="tabular mt-1 text-sm text-muted-foreground">{t('meetings.count').replace('{n}', String(data.total))}</p>
+            <p className="tabular mt-1 text-sm text-muted-foreground">
+              {t('meetings.count').replace('{n}', String(data.total))}
+            </p>
           ) : null}
         </div>
         {canSchedule ? (
@@ -145,17 +158,29 @@ export function MeetingsDashboard() {
           onChange={(value) => update({ scope: value })}
           options={[
             { value: 'all', label: t('meetings.filter.everyone') },
-            { value: 'mine', label: t('meetings.filter.mine') },
+            { value: 'mine', label: t(interviewer ? 'meetings.filter.assigned' : 'meetings.filter.mine') },
           ]}
         />
       </div>
 
       {isNavigating || (view === 'list' && query.isFetching) ? <ActionStatus /> : null}
-      {view === 'calendar' ? (
+      {!user ? (
+        userQuery.isError ? (
+          <Alert tone="error">
+            <p>{t('auth.roleError')}</p>
+            <Button variant="outline" loading={userQuery.isFetching} onClick={() => void userQuery.refetch()}>
+              {t('error.retry')}
+            </Button>
+          </Alert>
+        ) : (
+          <ActionStatus />
+        )
+      ) : view === 'calendar' ? (
         <MeetingsCalendar
           date={parseDateParam(dateParam, now)}
           status={status === 'ALL' ? undefined : status}
-          mine={scope === 'mine'}
+          mine={scope === 'mine' && !interviewer}
+          assignedToMe={scope === 'mine' && interviewer}
           mode={mode}
           onModeChange={(m) => update({ mode: m })}
           onDateChange={(date, m) => update({ date, mode: m })}
@@ -169,7 +194,13 @@ export function MeetingsDashboard() {
               {t('error.requestId')}: {query.error.requestId}
             </p>
           ) : null}
-          <Button variant="outline" size="sm" className="mt-2" loading={query.isFetching} onClick={() => void query.refetch()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            loading={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
             {t('error.retry')}
           </Button>
         </Alert>
@@ -184,8 +215,14 @@ export function MeetingsDashboard() {
       ) : data && data.items.length === 0 ? (
         <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
           <CalendarPlus aria-hidden className="size-10 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">{t('meetings.empty.title')}</h2>
-          <p className="text-sm text-muted-foreground">{filtered ? t('meetings.empty.filtered') : t('meetings.empty.body')}</p>
+          <h2 className="text-lg font-semibold">
+            {t(interviewer && scope === 'mine' ? 'meetings.empty.assigned' : 'meetings.empty.title')}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {filtered
+              ? t('meetings.empty.filtered')
+              : t(interviewer ? 'meetings.empty.assignmentHint' : 'meetings.empty.body')}
+          </p>
           {canSchedule ? (
             <Button asChild variant="outline">
               <Link href={createHref}>{t('meetings.empty.cta')}</Link>
@@ -201,7 +238,10 @@ export function MeetingsDashboard() {
               </li>
             ))}
           </ul>
-          <nav aria-label={t('meetings.pagination.label')} className="flex flex-wrap items-center justify-between gap-3">
+          <nav
+            aria-label={t('meetings.pagination.label')}
+            className="flex flex-wrap items-center justify-between gap-3"
+          >
             <p className="tabular text-sm text-muted-foreground">
               {t('meetings.pagination.showing')
                 .replace('{from}', String((data.page - 1) * data.pageSize + 1))
@@ -209,11 +249,21 @@ export function MeetingsDashboard() {
                 .replace('{total}', String(data.total))}
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={isNavigating || query.isFetching || data.page <= 1} onClick={() => update({ page: data.page - 1 })}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isNavigating || query.isFetching || data.page <= 1}
+                onClick={() => update({ page: data.page - 1 })}
+              >
                 <ChevronLeft aria-hidden />
                 {t('meetings.pagination.prev')}
               </Button>
-              <Button variant="outline" size="sm" disabled={isNavigating || query.isFetching || data.page >= lastPage} onClick={() => update({ page: data.page + 1 })}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isNavigating || query.isFetching || data.page >= lastPage}
+                onClick={() => update({ page: data.page + 1 })}
+              >
                 {t('meetings.pagination.next')}
                 <ChevronRight aria-hidden />
               </Button>

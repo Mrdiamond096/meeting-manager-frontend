@@ -23,7 +23,9 @@ const overlaps = (m: Meeting, from: Date, to: Date) => new Date(m.dueDate) < to 
 /** One request per chunk (see splitDays); a meeting crossing a chunk edge comes back twice and is kept once. */
 async function loadRange(params: RangeMeetingsParams, from: Date, to: Date, signal?: AbortSignal): Promise<Meeting[]> {
   const pages = await Promise.all(
-    splitDays(from, to).map(([f, t]) => meetingsApi.range({ ...params, from: f.toISOString(), to: t.toISOString() }, signal)),
+    splitDays(from, to).map(([f, t]) =>
+      meetingsApi.range({ ...params, from: f.toISOString(), to: t.toISOString() }, signal),
+    ),
   );
   const byId = new Map(pages.flat().map((m) => [m.id, m]));
   return [...byId.values()].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id));
@@ -37,6 +39,7 @@ interface Props {
   onModeChange: (mode: CalendarMode) => void;
   status?: MeetingStatus;
   mine: boolean;
+  assignedToMe?: boolean;
   onDateChange: (date: Date, mode?: CalendarMode) => void;
   /** "n meetings this week" / "n meetings in November" for the page header. */
   onSummary: (summary: string | undefined) => void;
@@ -60,7 +63,10 @@ function usePhone() {
 function useZoneName(intl: string, at: Date) {
   const [zone, setZone] = useState<string>();
   useEffect(() => {
-    setZone(new Intl.DateTimeFormat(intl, { timeZoneName: 'short' }).formatToParts(at).find((p) => p.type === 'timeZoneName')?.value);
+    setZone(
+      new Intl.DateTimeFormat(intl, { timeZoneName: 'short' }).formatToParts(at).find((p) => p.type === 'timeZoneName')
+        ?.value,
+    );
   }, [intl, at.getTime()]);
   return zone;
 }
@@ -75,7 +81,7 @@ export function MeetingsCalendar(props: Props) {
   return mounted ? <Calendar {...props} /> : <Skeleton aria-busy className="h-[42rem] w-full rounded-lg" />;
 }
 
-function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSummary }: Props) {
+function Calendar({ date, mode, status, mine, assignedToMe, onDateChange, onModeChange, onSummary }: Props) {
   const { t, intl } = useI18n();
   const month = mode === 'month';
   const phone = usePhone();
@@ -88,6 +94,7 @@ function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSumm
     to: end.toISOString(),
     ...(status ? { status } : {}),
     ...(mine ? { mine: true } : {}),
+    ...(assignedToMe ? { assignedToMe: true } : {}),
   };
   const query = useQuery({
     queryKey: meetingKeys.range(params),
@@ -103,12 +110,19 @@ function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSumm
     ? meetings?.filter((m) => overlaps(m, startOfMonth(date), addMonths(date, 1))).length
     : meetings?.length;
   const summary =
-    count === undefined ? undefined : month ? t('calendar.countMonth').replace('{n}', String(count)).replace('{month}', monthName) : t('calendar.count').replace('{n}', String(count));
+    count === undefined
+      ? undefined
+      : month
+        ? t('calendar.countMonth').replace('{n}', String(count)).replace('{month}', monthName)
+        : t('calendar.count').replace('{n}', String(count));
   useEffect(() => onSummary(summary), [summary, onSummary]);
 
   const label = month
     ? new Intl.DateTimeFormat(intl, { month: 'long', year: 'numeric' }).format(date)
-    : new Intl.DateTimeFormat(intl, { day: 'numeric', month: 'short', year: 'numeric' }).formatRange(start, addDays(end, -1));
+    : new Intl.DateTimeFormat(intl, { day: 'numeric', month: 'short', year: 'numeric' }).formatRange(
+        start,
+        addDays(end, -1),
+      );
   const step = (n: number) => onDateChange(month ? addMonths(date, n) : addDays(start, 7 * n));
 
   return (
@@ -117,10 +131,20 @@ function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSumm
         <Button variant="outline" size="sm" onClick={() => onDateChange(new Date())}>
           {t('calendar.today')}
         </Button>
-        <Button variant="ghost" size="icon" aria-label={t(month ? 'calendar.prevMonth' : 'calendar.prevWeek')} onClick={() => step(-1)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t(month ? 'calendar.prevMonth' : 'calendar.prevWeek')}
+          onClick={() => step(-1)}
+        >
           <ChevronLeft aria-hidden />
         </Button>
-        <Button variant="ghost" size="icon" aria-label={t(month ? 'calendar.nextMonth' : 'calendar.nextWeek')} onClick={() => step(1)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t(month ? 'calendar.nextMonth' : 'calendar.nextWeek')}
+          onClick={() => step(1)}
+        >
           <ChevronRight aria-hidden />
         </Button>
         <h2 aria-live="polite" className="tabular text-lg font-semibold">
@@ -148,7 +172,13 @@ function Calendar({ date, mode, status, mine, onDateChange, onModeChange, onSumm
               {t('error.requestId')}: {query.error.requestId}
             </p>
           ) : null}
-          <Button variant="outline" size="sm" className="mt-2" loading={query.isFetching} onClick={() => void query.refetch()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            loading={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
             {t('error.retry')}
           </Button>
         </Alert>

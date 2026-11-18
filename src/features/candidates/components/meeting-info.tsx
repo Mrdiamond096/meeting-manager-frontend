@@ -8,25 +8,41 @@ import type { Meeting } from '@/features/meetings/types';
 import { useI18n } from '@/i18n/i18n-provider';
 
 const zoneName = (iso: string, intl: string) =>
-  new Intl.DateTimeFormat(intl, { timeZoneName: 'short' }).formatToParts(new Date(iso)).find((p) => p.type === 'timeZoneName')?.value;
+  new Intl.DateTimeFormat(intl, { timeZoneName: 'short' })
+    .formatToParts(new Date(iso))
+    .find((p) => p.type === 'timeZoneName')?.value;
 
 export function MeetingInfo({ meeting, upcoming, now }: { meeting: Meeting; upcoming: boolean; now: Date }) {
   const { t, intl, locale } = useI18n();
   const zone = zoneName(meeting.dueDate, intl);
   const where = meeting.meetingType
-    ? [t(`meetings.type.${meeting.meetingType}`), meeting.meetingType === 'ONLINE' && meeting.provider ? t(`meetings.provider.${meeting.provider}`) : null]
+    ? [
+        t(`meetings.type.${meeting.meetingType}`),
+        meeting.meetingType === 'ONLINE' && meeting.provider ? t(`meetings.provider.${meeting.provider}`) : null,
+      ]
         .filter(Boolean)
         .join(' · ')
     : '—';
   const rows: [string, ReactNode][] = [
     [t('candidate.info.title'), meeting.title],
     [
+      t('assignment.title'),
+      meeting.interviewers?.length
+        ? meeting.interviewers.map((person) => person.email).join(', ')
+        : t('assignment.none'),
+    ],
+    [
       t('candidate.info.date'),
-      new Intl.DateTimeFormat(intl, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(meeting.dueDate)),
+      new Intl.DateTimeFormat(intl, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }).format(
+        new Date(meeting.dueDate),
+      ),
     ],
     [t('candidate.info.time'), `${formatTimeRange(meeting, intl, locale)}${zone ? ` (${zone})` : ''}`],
     [t('candidate.info.type'), where],
-    [t('candidate.info.status'), <StatusBadge key="status" status={isPastMeeting(meeting, now) ? 'PAST' : meeting.status} />],
+    [
+      t('candidate.info.status'),
+      <StatusBadge key="status" status={isPastMeeting(meeting, now) ? 'PAST' : meeting.status} />,
+    ],
   ];
 
   return (

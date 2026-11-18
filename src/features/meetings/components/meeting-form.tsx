@@ -11,6 +11,7 @@ import { useI18n } from '@/i18n/i18n-provider';
 import { emptyFormValues, meetingFormSchema, meetingToFormValues, type MeetingFormValues } from '../form';
 import { useSaveMeeting } from '../hooks/use-save-meeting';
 import type { Meeting } from '../types';
+import { MeetingInterviewerFields } from './meeting-interviewer-fields';
 import { MeetingCandidateFields } from './meeting-candidate-fields';
 import { MeetingDetailsFields } from './meeting-details-fields';
 import { MeetingScheduleFields } from './meeting-schedule-fields';
@@ -54,6 +55,7 @@ export function MeetingForm({ meeting, onReload, startAt, refreshing, cancelHref
         {formError ? <Alert tone="error">{formError}</Alert> : null}
 
         <MeetingCandidateFields />
+        <MeetingInterviewerFields meeting={meeting} />
         <MeetingScheduleFields initial={initial} meeting={meeting} />
         <MeetingDetailsFields meeting={meeting} />
 

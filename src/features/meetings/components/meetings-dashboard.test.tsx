@@ -24,6 +24,7 @@ function meeting(overrides: Partial<Meeting> = {}): Meeting {
     meetingType: 'ONLINE',
     provider: 'GOOGLE_MEET',
     candidate: { id: 'c1', name: 'Alice Tan', position: 'Software Engineer', createdAt: '2030-01-01T00:00:00.000Z' },
+    interviewers: [],
     createdById: 'u1',
     isMine: true,
     version: 1,
@@ -234,4 +235,16 @@ it('keeps cards visible and announces a slow background refresh until it complet
   await act(async () => resolve(page([meeting()], 30)));
   await waitFor(() => expect(screen.queryByText('Loading updates…')).toBeNull());
   expect((screen.getByRole('button', { name: /Next/ }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it('uses assignment filtering for the interviewer Mine view, without mixing in creator ownership', async () => {
+  fetchMock.mockResolvedValue(page([meeting()]));
+  renderWithProviders(<MeetingsDashboard />, {
+    user: { id: 'assigned-user', email: 'i@example.test', role: 'INTERVIEWER' },
+  });
+  await screen.findByRole('heading', { name: 'Alice Tan' });
+  const url = new URL(String(fetchMock.mock.calls[0]![0]), 'http://localhost');
+  expect(url.searchParams.get('assignedToMe')).toBe('true');
+  expect(url.searchParams.has('mine')).toBe(false);
+  expect(screen.getByRole('radio', { name: 'Assigned to me' }).getAttribute('aria-checked')).toBe('true');
 });
