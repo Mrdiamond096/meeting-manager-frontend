@@ -11,7 +11,12 @@ import NewMeetingPage from '@/app/(app)/meetings/new/page';
 
 let fetchMock: MockInstance<typeof fetch>;
 
-const ALICE: CandidateSummary = { id: 'c1', name: 'Alice Tan', position: 'Software Engineer', createdAt: '2030-01-01T00:00:00.000Z' };
+const ALICE: CandidateSummary = {
+  id: 'c1',
+  name: 'Alice Tan',
+  position: 'Software Engineer',
+  createdAt: '2030-01-01T00:00:00.000Z',
+};
 const POSITIONS = ['Software Engineer', 'QA Engineer'];
 
 const existing: Meeting = {
@@ -24,6 +29,7 @@ const existing: Meeting = {
   meetingType: 'ONLINE',
   provider: 'ZOOM',
   candidate: ALICE,
+  interviewers: [],
   createdById: 'u1',
   isMine: true,
   version: 4,
@@ -96,7 +102,13 @@ describe('MeetingForm (create)', () => {
 
     await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
     const body = requestOf(calls[0]!)!;
-    expect(body).toMatchObject({ title: 'Hiring sync', description: 'Bring laptop', status: 'PENDING', meetingType: 'ONLINE', provider: 'GOOGLE_MEET' });
+    expect(body).toMatchObject({
+      title: 'Hiring sync',
+      description: 'Bring laptop',
+      status: 'PENDING',
+      meetingType: 'ONLINE',
+      provider: 'GOOGLE_MEET',
+    });
     expect(typeof body.dueDate).toBe('string');
     expect(new Date(body.endAt as string).getTime() - new Date(body.dueDate as string).getTime()).toBe(90 * 60_000);
     expect(body).not.toHaveProperty('candidateId');
@@ -192,7 +204,8 @@ describe('MeetingForm (create)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Book meeting' }));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
     expect(requestOf(calls.find((c) => c.method === 'POST')!)).toMatchObject({
-      title: 'Technical discussion', candidate: { name: 'Bea', position: 'QA Engineer' },
+      title: 'Technical discussion',
+      candidate: { name: 'Bea', position: 'QA Engineer' },
     });
   });
 
@@ -220,7 +233,14 @@ describe('MeetingForm (create)', () => {
   it('maps API validation details onto the field', async () => {
     mockApi({
       'POST /meetings': () =>
-        jsonResponse(400, { error: { code: 'VALIDATION_ERROR', message: 'x', requestId: 'r', details: [{ path: 'body.dueDate', message: 'Invalid datetime' }] } }),
+        jsonResponse(400, {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'x',
+            requestId: 'r',
+            details: [{ path: 'body.dueDate', message: 'Invalid datetime' }],
+          },
+        }),
     });
     renderWithProviders(<MeetingForm />);
     await userEvent.type(screen.getByLabelText('Title'), 'Sync');
@@ -232,7 +252,10 @@ describe('MeetingForm (create)', () => {
   });
 
   it('shows the request id for an unexpected server error and keeps the form', async () => {
-    mockApi({ 'POST /meetings': () => jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'x', requestId: 'req-9' } }) });
+    mockApi({
+      'POST /meetings': () =>
+        jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'x', requestId: 'req-9' } }),
+    });
     renderWithProviders(<MeetingForm />);
     await userEvent.type(screen.getByLabelText('Title'), 'Sync');
     await userEvent.click(screen.getByRole('button', { name: 'Book meeting' }));
@@ -276,11 +299,13 @@ describe('EditMeeting', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
     const keys = invalidate.mock.calls.map(([filters]) => JSON.stringify(filters?.queryKey));
-    expect(keys).toEqual(expect.arrayContaining([
-      JSON.stringify(['meetings']),
-      JSON.stringify(['candidates', 'detail', ALICE.id]),
-      JSON.stringify(['candidates', 'detail', 'c-bo']),
-    ]));
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        JSON.stringify(['meetings']),
+        JSON.stringify(['candidates', 'detail', ALICE.id]),
+        JSON.stringify(['candidates', 'detail', 'c-bo']),
+      ]),
+    );
   });
 
   it('shows an overnight end as its own choice, keeps it, and clears it only on request', async () => {
@@ -320,20 +345,30 @@ describe('EditMeeting', () => {
     renderWithProviders(<EditMeeting id={existing.id} />);
     await userEvent.click(await screen.findByRole('button', { name: 'Remove candidate' }));
     await userEvent.type(candidateInput(), 'Zed');
-    await userEvent.click(await screen.findByRole('option', { name: /Create new candidate/ }).catch(async () => screen.findByText(/Create new candidate/)));
+    await userEvent.click(
+      await screen
+        .findByRole('option', { name: /Create new candidate/ })
+        .catch(async () => screen.findByText(/Create new candidate/)),
+    );
     await screen.findByRole('option', { name: 'QA Engineer' });
     await userEvent.selectOptions(screen.getByLabelText('Position'), 'QA Engineer');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() => expect(router.push).toHaveBeenCalledWith('/'));
-    expect(calls.filter((c) => c.method !== 'GET').map((c) => `${c.method} ${c.path.split('/').slice(0, 2).join('/')}`)).toEqual(['PATCH /meetings']);
-    expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({ version: 4, candidate: { name: 'Zed', position: 'QA Engineer' } });
+    expect(
+      calls.filter((c) => c.method !== 'GET').map((c) => `${c.method} ${c.path.split('/').slice(0, 2).join('/')}`),
+    ).toEqual(['PATCH /meetings']);
+    expect(requestOf(calls.find((c) => c.method === 'PATCH')!)).toEqual({
+      version: 4,
+      candidate: { name: 'Zed', position: 'QA Engineer' },
+    });
   });
 
   it('on a version conflict explains it and reloads the latest version', async () => {
     let reads = 0;
     mockApi({
-      [detail]: () => jsonResponse(200, ++reads === 1 ? existing : { ...existing, title: 'Changed elsewhere', version: 5 }),
+      [detail]: () =>
+        jsonResponse(200, ++reads === 1 ? existing : { ...existing, title: 'Changed elsewhere', version: 5 }),
       [`PATCH /meetings/${existing.id}`]: conflict,
     });
     renderWithProviders(<EditMeeting id={existing.id} />);
@@ -375,7 +410,9 @@ describe('EditMeeting', () => {
 describe('Cancel meeting creation', () => {
   it('returns to the same calendar even when the form was opened directly or refreshed', async () => {
     const returnTo = '/?view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false';
-    const page = await NewMeetingPage({ searchParams: Promise.resolve({ date: '2026-11-26', start: '09:00', returnTo }) });
+    const page = await NewMeetingPage({
+      searchParams: Promise.resolve({ date: '2026-11-26', start: '09:00', returnTo }),
+    });
     renderWithProviders(page);
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(router.push).toHaveBeenCalledWith(returnTo);
@@ -414,9 +451,12 @@ describe('Edit form refresh feedback', () => {
     let reads = 0;
     let resolve!: (value: Response) => void;
     mockApi({
-      [`GET /meetings/${existing.id}`]: () => ++reads === 1
-        ? jsonResponse(200, existing)
-        : new Promise<Response>((done) => { resolve = done; }),
+      [`GET /meetings/${existing.id}`]: () =>
+        ++reads === 1
+          ? jsonResponse(200, existing)
+          : new Promise<Response>((done) => {
+              resolve = done;
+            }),
       [`PATCH /meetings/${existing.id}`]: conflict,
     });
     renderWithProviders(<EditMeeting id={existing.id} />);

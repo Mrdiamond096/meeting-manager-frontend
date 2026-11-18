@@ -21,6 +21,7 @@ function meeting(id: string, overrides: Partial<Meeting> = {}): Meeting {
     meetingType: 'ONLINE',
     provider: 'GOOGLE_MEET',
     candidate: ALICE,
+    interviewers: [],
     createdById: 'u1',
     isMine: true,
     version: 1,
@@ -41,7 +42,12 @@ const feedback = (id: string, body: string, createdById: string | null): Feedbac
 const next = meeting('next', { title: 'Technical interview' });
 const before = (day: number, hour: number) => new Date(2020, 4, day, hour).toISOString();
 const past = meeting('past', { title: 'Phone screen', dueDate: before(2, 9), endAt: before(2, 10) });
-const cancelled = meeting('cancelled', { title: 'Intro call', status: 'CANCELLED', dueDate: before(1, 9), endAt: null });
+const cancelled = meeting('cancelled', {
+  title: 'Intro call',
+  status: 'CANCELLED',
+  dueDate: before(1, 9),
+  endAt: null,
+});
 
 interface Setup {
   detail?: Response;
@@ -52,12 +58,20 @@ function mockApi({ detail, notes }: Setup = {}) {
   fetchMock.mockImplementation(async (input) => {
     const path = new URL(String(input), 'http://localhost').pathname.replace('/api/v1', '');
     if (path === '/candidates/c1') {
-      return detail ?? jsonResponse(200, { candidate: ALICE, upcoming: [next], history: [past, cancelled] } satisfies CandidateDetail);
+      return (
+        detail ??
+        jsonResponse(200, { candidate: ALICE, upcoming: [next], history: [past, cancelled] } satisfies CandidateDetail)
+      );
     }
-    if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
+    if (path === '/auth/me')
+      return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
     if (path.startsWith('/meetings/')) {
       return (
-        notes ?? jsonResponse(200, { ...next, feedback: [feedback('f1', 'Strong design skills', 'u1'), feedback('f2', 'Clear communicator', 'u2')] })
+        notes ??
+        jsonResponse(200, {
+          ...next,
+          feedback: [feedback('f1', 'Strong design skills', 'u1'), feedback('f2', 'Clear communicator', 'u2')],
+        })
       );
     }
     throw new Error(`Unexpected request ${path}`);
@@ -91,7 +105,7 @@ describe('CandidateSummary', () => {
     expect(screen.getByRole('link', { name: /Back to meetings/ }).getAttribute('href')).toBe('/');
   });
 
-  it('lists the notes of the shown meeting, labelling the current user\'s own', async () => {
+  it("lists the notes of the shown meeting, labelling the current user's own", async () => {
     mockApi();
     renderWithProviders(<CandidateSummary id="c1" />, { user: null });
     expect(await screen.findByText('Strong design skills')).toBeTruthy();
@@ -116,7 +130,9 @@ describe('CandidateSummary', () => {
     expect(screen.getByRole('link', { name: 'Edit meeting' }).getAttribute('href')).toBe('/meetings/past/edit');
     const current = screen.getByRole('link', { name: /Phone screen/ });
     expect(current.getAttribute('aria-current')).toBe('true');
-    expect(screen.getByRole('link', { name: /Intro call/ }).getAttribute('href')).toBe('/candidates/c1?meeting=cancelled');
+    expect(screen.getByRole('link', { name: /Intro call/ }).getAttribute('href')).toBe(
+      '/candidates/c1?meeting=cancelled',
+    );
   });
 
   it('keeps a way back to the single upcoming meeting while a past one is shown', async () => {
@@ -135,7 +151,10 @@ describe('CandidateSummary', () => {
   });
 
   it('falls back to the latest past meeting when nothing is upcoming', async () => {
-    mockApi({ detail: jsonResponse(200, { candidate: ALICE, upcoming: [], history: [past, cancelled] }), notes: jsonResponse(200, { ...past, feedback: [] }) });
+    mockApi({
+      detail: jsonResponse(200, { candidate: ALICE, upcoming: [], history: [past, cancelled] }),
+      notes: jsonResponse(200, { ...past, feedback: [] }),
+    });
     renderWithProviders(<CandidateSummary id="c1" />);
     expect(await screen.findByRole('heading', { name: 'Alice Tan' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Edit meeting' }).getAttribute('href')).toBe('/meetings/past/edit');
@@ -146,7 +165,11 @@ describe('CandidateSummary', () => {
     mockApi({ detail: jsonResponse(200, { candidate: ALICE, upcoming: [next, later], history: [] }) });
     renderWithProviders(<CandidateSummary id="c1" />);
     const upcoming = (await screen.findByRole('heading', { name: 'Upcoming' })).closest('div')!.parentElement!;
-    expect(within(upcoming).getByRole('link', { name: /Final round/ }).getAttribute('href')).toBe('/candidates/c1?meeting=later');
+    expect(
+      within(upcoming)
+        .getByRole('link', { name: /Final round/ })
+        .getAttribute('href'),
+    ).toBe('/candidates/c1?meeting=later');
     expect(screen.getByText('No past meetings yet.')).toBeTruthy();
   });
 

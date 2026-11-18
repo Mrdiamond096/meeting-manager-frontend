@@ -12,11 +12,26 @@ import { usePermissions } from '@/lib/permissions';
 import { editMeetingHref, meetingHref } from '@/lib/routes';
 
 /** Event trigger and detail popover. Candidate-less meetings link to the edit form. */
-export function EventPopover({ meeting, now, label, className, children }: { meeting: Meeting; now: Date | null; label: string; className: string; children: ReactNode }) {
+export function EventPopover({
+  meeting,
+  now,
+  label,
+  className,
+  children,
+}: {
+  meeting: Meeting;
+  now: Date | null;
+  label: string;
+  className: string;
+  children: ReactNode;
+}) {
   const { t, intl, locale } = useI18n();
-  const { canSchedule } = usePermissions();
+  const { canEdit } = usePermissions();
   const where = meeting.meetingType
-    ? [t(`meetings.type.${meeting.meetingType}`), meeting.meetingType === 'ONLINE' && meeting.provider ? t(`meetings.provider.${meeting.provider}`) : null]
+    ? [
+        t(`meetings.type.${meeting.meetingType}`),
+        meeting.meetingType === 'ONLINE' && meeting.provider ? t(`meetings.provider.${meeting.provider}`) : null,
+      ]
         .filter(Boolean)
         .join(' · ')
     : null;
@@ -44,7 +59,7 @@ export function EventPopover({ meeting, now, label, className, children }: { mee
           ) : null}
         </dl>
         <div className="flex justify-end gap-2">
-          {canSchedule ? (
+          {canEdit(meeting) ? (
             <Button asChild variant="outline" size="sm">
               <Link href={editMeetingHref(meeting.id)}>{t('candidate.edit')}</Link>
             </Button>

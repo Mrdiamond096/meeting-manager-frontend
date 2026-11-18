@@ -8,14 +8,23 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentUser } from '@/components/shell/use-current-user';
 import { useI18n } from '@/i18n/i18n-provider';
-import { canSchedule } from '@/lib/permissions';
+import type { Meeting } from '../types';
+import { canManageMeeting, canSchedule } from '@/lib/permissions';
 
 /**
  * Create/edit forms render only once the role is known, so nothing typed before the answer is thrown away.
  * A role that cannot schedule gets `readOnly` (e.g. the meeting itself) or an explanation instead.
  * If the role cannot be loaded the guard stays closed and offers Retry; a role already cached is still used.
  */
-export function RequireScheduler({ children, readOnly }: { children: ReactNode; readOnly?: ReactNode }) {
+export function RequireScheduler({
+  children,
+  readOnly,
+  meeting,
+}: {
+  children: ReactNode;
+  readOnly?: ReactNode;
+  meeting?: Meeting;
+}) {
   const { t } = useI18n();
   const { data: user, isPending, isError, isFetching, refetch } = useCurrentUser();
   if (!user && isError)
@@ -37,7 +46,7 @@ export function RequireScheduler({ children, readOnly }: { children: ReactNode; 
         </div>
       </div>
     );
-  if (canSchedule(user?.role)) return children;
+  if (canSchedule(user?.role) || (meeting && canManageMeeting(user, meeting))) return children;
   if (readOnly) return readOnly;
   return (
     <Alert tone="error" className="mx-auto max-w-2xl">

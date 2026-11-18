@@ -1,5 +1,6 @@
 import { api } from '@/lib/api';
 import type {
+  AssignedInterviewer,
   CandidateDetail,
   CandidateSummary,
   CreateMeetingBody,
@@ -29,18 +30,29 @@ export const meetingsApi = {
   list: (params: ListMeetingsParams, signal?: AbortSignal) =>
     api<Page<Meeting>>('/meetings', { query: { ...params, mine: params.mine || undefined }, signal }),
   range: (params: RangeMeetingsParams, signal?: AbortSignal) =>
-    api<{ items: Meeting[] }>('/meetings', { query: { view: 'range', ...params, mine: params.mine || undefined }, signal }).then((r) => r.items),
+    api<{ items: Meeting[] }>('/meetings', {
+      query: { view: 'range', ...params, mine: params.mine || undefined },
+      signal,
+    }).then((r) => r.items),
   get: (id: string, signal?: AbortSignal) => api<MeetingDetail>(`/meetings/${id}`, { signal }),
   create: (body: CreateMeetingBody) => api<Meeting>('/meetings', { method: 'POST', body }),
   update: (id: string, body: UpdateMeetingBody) => api<Meeting>(`/meetings/${id}`, { method: 'PATCH', body }),
-  cancel: (id: string, version: number) => api<Meeting>(`/meetings/${id}/cancel`, { method: 'POST', body: { version } }),
+  cancel: (id: string, version: number) =>
+    api<Meeting>(`/meetings/${id}/cancel`, { method: 'POST', body: { version } }),
   remove: (id: string, version: number) => api<void>(`/meetings/${id}`, { method: 'DELETE', query: { version } }),
-  addFeedback: (id: string, body: string) => api<Feedback>(`/meetings/${id}/feedback`, { method: 'POST', body: { body } }),
+  addFeedback: (id: string, body: string) =>
+    api<Feedback>(`/meetings/${id}/feedback`, { method: 'POST', body: { body } }),
+};
+
+export const interviewersApi = {
+  search: (query: string, signal?: AbortSignal) =>
+    api<{ items: AssignedInterviewer[] }>('/interviewers/search', { method: 'POST', body: { query }, signal }).then((r) => r.items),
 };
 
 export const candidatesApi = {
   get: (id: string, signal?: AbortSignal) => api<CandidateDetail>(`/candidates/${id}`, { signal }),
   search: (q: string, signal?: AbortSignal) =>
     api<{ items: CandidateSummary[] }>('/candidates', { query: { q }, signal }).then((r) => r.items),
-  positions: (signal?: AbortSignal) => api<{ items: string[] }>('/candidates/positions', { signal }).then((r) => r.items),
+  positions: (signal?: AbortSignal) =>
+    api<{ items: string[] }>('/candidates/positions', { signal }).then((r) => r.items),
 };

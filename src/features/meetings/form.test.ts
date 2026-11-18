@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { fromLocalParts } from './datetime';
-import { emptyFormValues, KEEP_END, mapApiErrors, parseStartParams, meetingFormSchema, meetingToFormValues, toCreateBody, toUpdateBody } from './form';
+import {
+  emptyFormValues,
+  KEEP_END,
+  mapApiErrors,
+  parseStartParams,
+  meetingFormSchema,
+  meetingToFormValues,
+  toCreateBody,
+  toUpdateBody,
+} from './form';
 import type { Meeting } from './types';
 
 const meeting: Meeting = {
@@ -13,6 +22,7 @@ const meeting: Meeting = {
   meetingType: 'ONLINE',
   provider: 'ZOOM',
   candidate: { id: 'c1', name: 'Alice', position: 'QA Engineer', createdAt: '2030-01-01T00:00:00.000Z' },
+  interviewers: [],
   createdById: 'u1',
   isMine: true,
   version: 3,
@@ -41,7 +51,9 @@ describe('meetingFormSchema', () => {
     expect(messages({ ...valid, candidateMode: 'new', newName: ' ', newPosition: '' })).toEqual(
       expect.arrayContaining(['meetings.validation.nameRequired', 'meetings.validation.positionRequired']),
     );
-    expect(messages({ ...valid, candidateMode: 'existing', candidate: null })).toContain('meetings.validation.candidateRequired');
+    expect(messages({ ...valid, candidateMode: 'existing', candidate: null })).toContain(
+      'meetings.validation.candidateRequired',
+    );
   });
 });
 
@@ -57,14 +69,25 @@ describe('toCreateBody', () => {
       provider: 'ZOOM',
       endTime: '',
     });
-    expect(body).toMatchObject({ title: 'Interview: Alice', candidateId: 'c1', meetingType: 'ONSITE', status: 'PENDING' });
+    expect(body).toMatchObject({
+      title: 'Interview: Alice',
+      candidateId: 'c1',
+      meetingType: 'ONSITE',
+      status: 'PENDING',
+    });
     expect(body).not.toHaveProperty('provider');
     expect(body).not.toHaveProperty('endAt');
     expect(body).not.toHaveProperty('candidate');
   });
 
   it('sends a new candidate inline', () => {
-    const body = toCreateBody({ ...emptyFormValues(new Date()), title: 'T', candidateMode: 'new', newName: ' Bo ', newPosition: 'QA Engineer' });
+    const body = toCreateBody({
+      ...emptyFormValues(new Date()),
+      title: 'T',
+      candidateMode: 'new',
+      newName: ' Bo ',
+      newPosition: 'QA Engineer',
+    });
     expect(body.candidate).toEqual({ name: 'Bo', position: 'QA Engineer' });
     expect(body).not.toHaveProperty('candidateId');
   });
@@ -94,7 +117,9 @@ describe('toUpdateBody', () => {
     expect(start.endTime).toBe(KEEP_END);
     expect(meetingToFormValues({ ...meeting, endAt: null }).endTime).toBe('');
     expect(toUpdateBody(overnight, start, { ...start, endTime: '' })).toEqual({ version: 3, endAt: null });
-    expect(toUpdateBody(overnight, start, { ...start, endTime: '12:00' })?.endAt).toBe(fromLocalParts('2030-05-10', '12:00'));
+    expect(toUpdateBody(overnight, start, { ...start, endTime: '12:00' })?.endAt).toBe(
+      fromLocalParts('2030-05-10', '12:00'),
+    );
   });
 
   it('does not treat the kept overnight end as a time to compare with the start', () => {
@@ -123,13 +148,21 @@ describe('toUpdateBody', () => {
   });
 
   it('changes and removes the candidate', () => {
-    expect(toUpdateBody(meeting, initial, { ...initial, candidateMode: 'none', candidate: null })).toEqual({ version: 3, candidateId: null });
+    expect(toUpdateBody(meeting, initial, { ...initial, candidateMode: 'none', candidate: null })).toEqual({
+      version: 3,
+      candidateId: null,
+    });
     const other = { id: 'c2', name: 'Bo', position: 'QA Engineer', createdAt: '2030-01-01T00:00:00.000Z' };
     expect(toUpdateBody(meeting, initial, { ...initial, candidate: other })).toEqual({ version: 3, candidateId: 'c2' });
   });
 
   it('sends a new candidate inline and never together with candidateId', () => {
-    const body = toUpdateBody(meeting, initial, { ...initial, candidateMode: 'new', newName: ' Z ', newPosition: 'QA Engineer' });
+    const body = toUpdateBody(meeting, initial, {
+      ...initial,
+      candidateMode: 'new',
+      newName: ' Z ',
+      newPosition: 'QA Engineer',
+    });
     expect(body).toEqual({ version: 3, candidate: { name: 'Z', position: 'QA Engineer' } });
     expect(body).not.toHaveProperty('candidateId');
   });
@@ -167,5 +200,23 @@ describe('start from a calendar slot', () => {
     expect(parseStartParams('2030-05-10', '24:00')).toBeUndefined();
     expect(parseStartParams('2030-05-10', undefined)).toBeUndefined();
     expect(parseStartParams(['2030-05-10'], '10:30')).toBeUndefined();
+  });
+});
+
+it('clears assignments explicitly and preserves them on unrelated edits', () => {
+  const assigned = { ...meeting, interviewers: [{ id: 'interviewer', email: 'i@example.test' }] };
+  const initial = meetingToFormValues(assigned);
+  expect(toUpdateBody(assigned, initial, { ...initial, interviewerIds: [] })).toEqual({
+    version: assigned.version,
+    interviewerIds: [],
+  });
+  const body = toUpdateBody(assigned, initial, { ...initial, title: 'Changed' });
+  expect(body?.interviewerIds).toBeUndefined();
+});
+
+it('maps assignment validation and array-item errors to a translated field error', () => {
+  expect(mapApiErrors([{ path: 'body.interviewerIds.0', message: 'Invalid UUID' }])).toEqual({
+    fields: { interviewerIds: 'meetings.validation.interviewersUnavailable' },
+    unmapped: [],
   });
 });

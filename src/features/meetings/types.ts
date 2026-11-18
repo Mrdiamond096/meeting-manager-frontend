@@ -14,6 +14,11 @@ export interface CandidateSummary {
   createdAt: string;
 }
 
+export interface AssignedInterviewer {
+  id: string;
+  email: string;
+}
+
 export interface Meeting {
   id: string;
   title: string;
@@ -24,6 +29,7 @@ export interface Meeting {
   meetingType: MeetingType | null;
   provider: Provider | null;
   candidate: CandidateSummary | null;
+  interviewers: AssignedInterviewer[];
   createdById: string | null;
   isMine: boolean;
   version: number;
@@ -62,6 +68,7 @@ export interface RangeMeetingsParams {
   to: string;
   status?: MeetingStatus;
   mine?: boolean;
+  assignedToMe?: boolean;
 }
 
 export interface ListMeetingsParams {
@@ -70,10 +77,12 @@ export interface ListMeetingsParams {
   status?: MeetingStatus;
   from?: string;
   mine?: boolean;
+  assignedToMe?: boolean;
 }
 
 /** POST /meetings body. Candidate: an existing id, or a new one created in the same transaction, or neither. */
 export interface CreateMeetingBody {
+  interviewerIds?: string[];
   title: string;
   description: string;
   dueDate: string;
@@ -87,6 +96,7 @@ export interface CreateMeetingBody {
 
 /** PATCH /meetings/:id body: any subset plus the required `version`. */
 export interface UpdateMeetingBody {
+  interviewerIds?: string[];
   version: number;
   title?: string;
   description?: string;

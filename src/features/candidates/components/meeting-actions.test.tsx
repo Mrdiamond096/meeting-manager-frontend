@@ -17,6 +17,7 @@ const next: Meeting = {
   meetingType: 'ONSITE',
   provider: null,
   candidate: ALICE,
+  interviewers: [],
   createdById: 'u1',
   isMine: true,
   version: 3,
@@ -37,8 +38,10 @@ function mockApi(handlers: Record<string, Handler> = {}, meeting: Meeting = next
     calls.push({ method, path, search: url.search, body });
     const handler = handlers[`${method} ${path}`];
     if (handler) return handler(body, url);
-    if (path === '/candidates/c1') return jsonResponse(200, { candidate: ALICE, upcoming: [meeting], history: [] } satisfies CandidateDetail);
-    if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
+    if (path === '/candidates/c1')
+      return jsonResponse(200, { candidate: ALICE, upcoming: [meeting], history: [] } satisfies CandidateDetail);
+    if (path === '/auth/me')
+      return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
     if (method === 'GET' && path === `/meetings/${meeting.id}`) return jsonResponse(200, { ...meeting, feedback: [] });
     throw new Error(`Unexpected request ${method} ${path}`);
   });
@@ -111,7 +114,8 @@ describe('Candidate summary actions', () => {
 
   it('keeps the dialog open with the request id on an unexpected error', async () => {
     mockApi({
-      'DELETE /meetings/m1': () => jsonResponse(500, { error: { code: 'INTERNAL', message: 'boom', requestId: 'r-500' } }),
+      'DELETE /meetings/m1': () =>
+        jsonResponse(500, { error: { code: 'INTERNAL', message: 'boom', requestId: 'r-500' } }),
     });
     renderWithProviders(<CandidateSummary id="c1" />);
     await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
@@ -126,7 +130,13 @@ describe('Add feedback', () => {
   it('adds a trimmed note, clears the field and reloads the notes', async () => {
     mockApi({
       'POST /meetings/m1/feedback': (body) =>
-        jsonResponse(201, { id: 'f1', meetingId: 'm1', body: (body as { body: string }).body, createdById: 'u1', createdAt: next.createdAt }),
+        jsonResponse(201, {
+          id: 'f1',
+          meetingId: 'm1',
+          body: (body as { body: string }).body,
+          createdById: 'u1',
+          createdAt: next.createdAt,
+        }),
     });
     renderWithProviders(<CandidateSummary id="c1" />);
     const field = (await screen.findByLabelText('Add feedback')) as HTMLTextAreaElement;
@@ -134,7 +144,9 @@ describe('Add feedback', () => {
     const loads = fetchesOf('/meetings/m1');
     await userEvent.click(screen.getAllByRole('button', { name: 'Add feedback' }).at(-1)!);
     expect(await screen.findByText('Feedback added')).toBeTruthy();
-    expect(writes()).toEqual([{ method: 'POST', path: '/meetings/m1/feedback', search: '', body: { body: 'Strong fundamentals' } }]);
+    expect(writes()).toEqual([
+      { method: 'POST', path: '/meetings/m1/feedback', search: '', body: { body: 'Strong fundamentals' } },
+    ]);
     expect(field.value).toBe('');
     expect(fetchesOf('/meetings/m1')).toBeGreaterThan(loads);
   });
@@ -165,7 +177,13 @@ describe('Switching to another meeting of the candidate', () => {
     const [, rerender] = useState(0);
     return (
       <>
-        <button type="button" onClick={() => { setSearchParams('meeting=m2'); rerender((n) => n + 1); }}>
+        <button
+          type="button"
+          onClick={() => {
+            setSearchParams('meeting=m2');
+            rerender((n) => n + 1);
+          }}
+        >
           show m2
         </button>
         <CandidateSummary id="c1" />
@@ -179,8 +197,10 @@ describe('Switching to another meeting of the candidate', () => {
       const path = url.pathname.replace('/api/v1', '');
       const method = init?.method ?? 'GET';
       calls.push({ method, path, search: url.search, body: init?.body ? JSON.parse(String(init.body)) : undefined });
-      if (path === '/candidates/c1') return jsonResponse(200, { candidate: ALICE, upcoming: [next, other], history: [] } satisfies CandidateDetail);
-      if (path === '/auth/me') return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
+      if (path === '/candidates/c1')
+        return jsonResponse(200, { candidate: ALICE, upcoming: [next, other], history: [] } satisfies CandidateDetail);
+      if (path === '/auth/me')
+        return jsonResponse(200, { user: { id: 'u1', email: 'me@example.test', role: 'RECRUITER' } });
       if (method === 'GET' && path === '/meetings/m1') return jsonResponse(200, { ...next, feedback: [] });
       if (method === 'GET' && path === '/meetings/m2') return jsonResponse(200, { ...other, feedback: [] });
       throw new Error(`Unexpected request ${method} ${path}`);

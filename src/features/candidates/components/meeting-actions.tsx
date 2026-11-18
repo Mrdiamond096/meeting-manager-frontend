@@ -19,7 +19,15 @@ type Confirm = 'cancel' | 'delete' | 'conflict' | null;
 export const FEEDBACK_FIELD_ID = 'add-feedback';
 
 /** Actions for the meeting currently selected in the candidate summary. */
-export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; candidateId: string }) {
+export function MeetingActions({
+  meeting,
+  candidateId,
+  editing = false,
+}: {
+  meeting: Meeting;
+  candidateId?: string;
+  editing?: boolean;
+}) {
   const { t } = useI18n();
   const toast = useToast();
   const router = useRouter();
@@ -30,14 +38,18 @@ export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; can
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: meetingKeys.all }),
-      queryClient.invalidateQueries({ queryKey: candidateKeys.detail(candidateId) }),
+      ...(candidateId ? [queryClient.invalidateQueries({ queryKey: candidateKeys.detail(candidateId) })] : []),
     ]);
 
   const onError = (e: unknown) => {
     if (isApiError(e, 'VERSION_CONFLICT') || isApiError(e, 'INVALID_TRANSITION') || isApiError(e, 'NOT_FOUND')) {
       return setConfirm('conflict');
     }
-    setError([t('candidate.actions.error'), isApiError(e) && e.requestId ? `${t('error.requestId')}: ${e.requestId}` : null].filter(Boolean).join(' '));
+    setError(
+      [t('candidate.actions.error'), isApiError(e) && e.requestId ? `${t('error.requestId')}: ${e.requestId}` : null]
+        .filter(Boolean)
+        .join(' '),
+    );
   };
 
   const cancel = useMutation({
@@ -63,7 +75,8 @@ export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; can
   });
 
   const busy = cancel.isPending || remove.isPending;
-  const { canSchedule, canDelete } = usePermissions();
+  const { canEdit, canDelete } = usePermissions();
+  const editable = canEdit(meeting);
   const open = (next: Confirm) => {
     setError(null);
     setConfirm(next);
@@ -76,12 +89,12 @@ export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; can
           {t('candidate.actions.delete')}
         </Button>
       ) : null}
-      {canSchedule && meeting.status !== 'CANCELLED' ? (
+      {editable && meeting.status !== 'CANCELLED' ? (
         <Button variant="outline" disabled={busy} onClick={() => open('cancel')}>
           {t('candidate.actions.cancel')}
         </Button>
       ) : null}
-      {canSchedule ? (
+      {editable && !editing ? (
         <Button asChild variant="outline">
           <Link href={editMeetingHref(meeting.id)}>{t('candidate.edit')}</Link>
         </Button>
@@ -91,7 +104,9 @@ export function MeetingActions({ meeting, candidateId }: { meeting: Meeting; can
       <Dialog open={confirm === 'cancel' || confirm === 'delete'} onOpenChange={(o) => !o && !busy && setConfirm(null)}>
         <DialogContent>
           <DialogTitle>{t(confirm === 'delete' ? 'candidate.delete.title' : 'candidate.cancel.title')}</DialogTitle>
-          <DialogDescription>{t(confirm === 'delete' ? 'candidate.delete.body' : 'candidate.cancel.body')}</DialogDescription>
+          <DialogDescription>
+            {t(confirm === 'delete' ? 'candidate.delete.body' : 'candidate.cancel.body')}
+          </DialogDescription>
           {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}

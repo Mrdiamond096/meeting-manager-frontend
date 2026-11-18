@@ -19,6 +19,7 @@ const meeting = (id: string, overrides: Partial<Meeting>): Meeting => ({
   meetingType: 'ONSITE',
   provider: null,
   candidate: { id: `c-${id}`, name: `Candidate ${id}`, position: 'QA Engineer', createdAt: at(1, 9) },
+  interviewers: [],
   createdById: 'u1',
   isMine: true,
   version: 1,
@@ -110,7 +111,9 @@ describe('Calendar week view', () => {
   });
 
   it('shows the request id when the range cannot be loaded', async () => {
-    mockRange(jsonResponse(400, { error: { code: 'VALIDATION_ERROR', message: 'Range too long', requestId: 'r-range' } }));
+    mockRange(
+      jsonResponse(400, { error: { code: 'VALIDATION_ERROR', message: 'Range too long', requestId: 'r-range' } }),
+    );
     renderWithProviders(<MeetingsDashboard />);
     expect(await screen.findByText(/r-range/)).toBeTruthy();
   });
@@ -137,14 +140,24 @@ describe('Calendar month view', () => {
   beforeEach(() => setSearchParams('view=calendar&mode=month&date=2026-11-18'));
 
   it('loads the 42 days of the 6×7 grid and counts only the meetings of the month', async () => {
-    mockRange([meeting('nov', { dueDate: at(18, 10), endAt: at(18, 11) }), meeting('oct', { dueDate: new Date(2026, 9, 27, 9).toISOString(), endAt: new Date(2026, 9, 27, 10).toISOString() })]);
+    mockRange([
+      meeting('nov', { dueDate: at(18, 10), endAt: at(18, 11) }),
+      meeting('oct', {
+        dueDate: new Date(2026, 9, 27, 9).toISOString(),
+        endAt: new Date(2026, 9, 27, 10).toISOString(),
+      }),
+    ]);
     renderWithProviders(<MeetingsDashboard />);
     expect(await screen.findByText('1 meetings in November')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'November 2026' })).toBeTruthy();
     expect(requests[0]!.searchParams.get('from')).toBe(new Date(2026, 9, 26).toISOString());
     expect(requests.at(-1)!.searchParams.get('to')).toBe(new Date(2026, 11, 7).toISOString());
     // The October meeting still shows in its grid cell.
-    expect(within(screen.getByRole('list', { name: /Tuesday, October 27, 2026/ })).getByRole('button', { name: /Candidate oct/ })).toBeTruthy();
+    expect(
+      within(screen.getByRole('list', { name: /Tuesday, October 27, 2026/ })).getByRole('button', {
+        name: /Candidate oct/,
+      }),
+    ).toBeTruthy();
   });
 
   it('loads the month in chunks within the API limit and keeps a meeting crossing chunks once', async () => {
@@ -152,7 +165,9 @@ describe('Calendar month view', () => {
     mockRange([crossing]);
     renderWithProviders(<MeetingsDashboard />);
     expect(await screen.findByText('1 meetings in November')).toBeTruthy();
-    const ranges = requests.map((u) => [new Date(u.searchParams.get('from')!), new Date(u.searchParams.get('to')!)] as const);
+    const ranges = requests.map(
+      (u) => [new Date(u.searchParams.get('from')!), new Date(u.searchParams.get('to')!)] as const,
+    );
     expect(ranges).toHaveLength(2);
     expect(ranges[0]![0]).toEqual(new Date(2026, 9, 26));
     expect(ranges[0]![1]).toEqual(ranges[1]![0]);
@@ -165,7 +180,11 @@ describe('Calendar month view', () => {
     mockRange([9, 10, 11, 12, 13].map((h) => meeting(`m${h}`, { dueDate: at(18, h), endAt: at(18, h, 30) })));
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
-    expect(within(wednesday).getAllByRole('button').map((a) => a.textContent)).toEqual(['9:00 AM Candidate m9', '10:00 AM Candidate m10', '11:00 AM Candidate m11']);
+    expect(
+      within(wednesday)
+        .getAllByRole('button')
+        .map((a) => a.textContent),
+    ).toEqual(['9:00 AM Candidate m9', '10:00 AM Candidate m10', '11:00 AM Candidate m11']);
     await userEvent.click(screen.getByRole('button', { name: '+2 more' }));
     expect(router.replace).toHaveBeenLastCalledWith('/?view=calendar&date=2026-11-18');
   });
@@ -174,7 +193,9 @@ describe('Calendar month view', () => {
     mockRange([meeting('night', { dueDate: at(17, 23), endAt: at(18, 1) })]);
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
-    expect(within(wednesday).getByRole('button', { name: /Candidate night, continues from the day before/ }).textContent).toBe('Candidate night');
+    expect(
+      within(wednesday).getByRole('button', { name: /Candidate night, continues from the day before/ }).textContent,
+    ).toBe('Candidate night');
   });
 
   it('moves by month and switches back to the week in the URL', async () => {
@@ -195,7 +216,9 @@ describe('Event popover', () => {
     const popover = await screen.findByRole('dialog', { name: 'Candidate a' });
     expect(within(popover).getByText('Technical interview')).toBeTruthy();
     expect(within(popover).getByText('Online · Zoom')).toBeTruthy();
-    expect(within(popover).getByRole('link', { name: 'View details' }).getAttribute('href')).toBe('/candidates/c-a?meeting=a');
+    expect(within(popover).getByRole('link', { name: 'View details' }).getAttribute('href')).toBe(
+      '/candidates/c-a?meeting=a',
+    );
     expect(within(popover).getByRole('link', { name: 'Edit meeting' }).getAttribute('href')).toBe('/meetings/a/edit');
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -216,7 +239,9 @@ describe('Creating from an empty slot', () => {
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('list', { name: /Wednesday, November 18, 2026/ });
     fireEvent.click(wednesday, { clientY: 10.75 * 48 }); // 10:45 rounds down to the 10:30 slot
-    expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-18&start=10:30&returnTo=%2F%3Fview%3Dcalendar%26date%3D2026-11-18');
+    expect(router.push).toHaveBeenCalledWith(
+      '/meetings/new?date=2026-11-18&start=10:30&returnTo=%2F%3Fview%3Dcalendar%26date%3D2026-11-18',
+    );
   });
 
   it('does not create from a slot, a schedule button or an edit link for an interviewer', async () => {
@@ -257,7 +282,9 @@ describe('Creating from an empty slot', () => {
     mockRange([]);
     renderWithProviders(<MeetingsDashboard />);
     fireEvent.click(await screen.findByRole('list', { name: /Thursday, November 26, 2026/ }));
-    expect(router.push).toHaveBeenCalledWith('/meetings/new?date=2026-11-26&start=09:00&returnTo=%2F%3Fview%3Dcalendar%26mode%3Dmonth%26date%3D2026-11-18');
+    expect(router.push).toHaveBeenCalledWith(
+      '/meetings/new?date=2026-11-26&start=09:00&returnTo=%2F%3Fview%3Dcalendar%26mode%3Dmonth%26date%3D2026-11-18',
+    );
   });
 
   it('keeps month/date/status/scope when opening creation from the calendar header', async () => {
@@ -268,13 +295,20 @@ describe('Creating from an empty slot', () => {
     const href = screen.getByRole('link', { name: 'Schedule meeting' }).getAttribute('href')!;
     const url = new URL(href, 'http://localhost');
     expect(url.pathname).toBe('/meetings/new');
-    expect(url.searchParams.get('returnTo')).toBe('/?view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false');
+    expect(url.searchParams.get('returnTo')).toBe(
+      '/?view=calendar&mode=month&date=2026-11-18&status=PENDING&mine=false',
+    );
   });
 });
 
 describe('Phone agenda', () => {
   beforeEach(() => {
-    vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
   });
   afterEach(() => vi.unstubAllGlobals());
 
@@ -283,10 +317,24 @@ describe('Phone agenda', () => {
     renderWithProviders(<MeetingsDashboard />);
     const wednesday = await screen.findByRole('region', { name: /Wednesday, November 18, 2026/ });
     expect(within(wednesday).getByRole('button', { name: /Candidate a, 10:00 AM – 11:00 AM, Confirmed/ })).toBeTruthy();
-    expect(within(wednesday).getByRole('link', { name: 'New meeting on Wednesday, November 18, 2026' }).getAttribute('href')).toBe(
-      '/meetings/new?date=2026-11-18&start=09:00&returnTo=%2F%3Fview%3Dcalendar%26date%3D2026-11-18',
-    );
-    expect(within(screen.getByRole('region', { name: /Thursday, November 19, 2026/ })).getByText('No meetings')).toBeTruthy();
+    expect(
+      within(wednesday).getByRole('link', { name: 'New meeting on Wednesday, November 18, 2026' }).getAttribute('href'),
+    ).toBe('/meetings/new?date=2026-11-18&start=09:00&returnTo=%2F%3Fview%3Dcalendar%26date%3D2026-11-18');
+    expect(
+      within(screen.getByRole('region', { name: /Thursday, November 19, 2026/ })).getByText('No meetings'),
+    ).toBeTruthy();
     expect(screen.queryByRole('list', { name: /Wednesday/ })).toBeNull();
+  });
+});
+
+describe('assigned calendar scope', () => {
+  it('requests assignedToMe for interviewer weeks', async () => {
+    mockRange([]);
+    renderWithProviders(<MeetingsDashboard />, {
+      user: { id: 'assigned-user', email: 'i@example.test', role: 'INTERVIEWER' },
+    });
+    await screen.findByText('0 meetings this week');
+    expect(requests[0]!.searchParams.get('assignedToMe')).toBe('true');
+    expect(requests[0]!.searchParams.has('mine')).toBe(false);
   });
 });

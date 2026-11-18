@@ -9,6 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useI18n } from '@/i18n/i18n-provider';
 import { isApiError } from '@/lib/api';
 import { meetingKeys, meetingsApi } from '../api';
+import { MeetingActions } from '@/features/candidates/components/meeting-actions';
+import { MeetingNotes } from '@/features/candidates/components/meeting-notes';
+import { MeetingReadOnly } from './meeting-read-only';
+import { RequireScheduler } from './require-scheduler';
 import { MeetingForm } from './meeting-form';
 
 export function EditMeeting({ id }: { id: string }) {
@@ -64,14 +68,18 @@ export function EditMeeting({ id }: { id: string }) {
 
   // Keyed by version so a reload after a 409 remounts the form with the fresh values.
   return (
-    <div className="flex flex-col gap-4">
-      {reloading ? <ActionStatus /> : null}
-      <MeetingForm
-        key={query.data.version}
-        meeting={query.data}
-        refreshing={reloading}
-        onReload={() => void reloadAfterConflict()}
-      />
-    </div>
+    <RequireScheduler meeting={query.data} readOnly={<MeetingReadOnly id={id} />}>
+      <div className="flex flex-col gap-4">
+        {reloading ? <ActionStatus /> : null}
+        {!query.data.candidate ? <MeetingActions meeting={query.data} editing /> : null}
+        <MeetingForm
+          key={query.data.version}
+          meeting={query.data}
+          refreshing={reloading}
+          onReload={() => void reloadAfterConflict()}
+        />
+        {!query.data.candidate ? <MeetingNotes meetingId={query.data.id} /> : null}
+      </div>
+    </RequireScheduler>
   );
 }
