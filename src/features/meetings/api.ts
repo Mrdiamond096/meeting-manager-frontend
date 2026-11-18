@@ -46,7 +46,7 @@ export const meetingsApi = {
 
 export const interviewersApi = {
   search: (query: string, signal?: AbortSignal) =>
-    api<{ items: AssignedInterviewer[] }>('/interviewers', { query: { query }, signal }).then((r) => r.items),
+    api<{ items: AssignedInterviewer[] }>('/interviewers/search', { method: 'POST', body: { query }, signal }).then((r) => r.items),
 };
 
 export const candidatesApi = {

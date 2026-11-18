@@ -38,7 +38,7 @@ beforeEach(() => {
     const method = init?.method ?? 'GET';
     const body = init?.body ? JSON.parse(String(init.body)) : null;
     calls.push({ path, method, body });
-    if (path === '/interviewers')
+    if (path === '/interviewers/search')
       return directoryFails
         ? jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'Unavailable', requestId: 'directory-error' } })
         : jsonResponse(200, { items: [a, b] });
@@ -61,14 +61,14 @@ const interviewer = (person = a) => ({ id: person.id, email: person.email, role:
 describe('meeting assignment workflow', () => {
   it('lets a recruiter choose multiple interviewers when creating a meeting', async () => {
     renderWithProviders(<MeetingForm />);
-    expect(calls.some((call) => call.path === '/interviewers')).toBe(false);
+    expect(calls.some((call) => call.path === '/interviewers/search')).toBe(false);
     await userEvent.click(screen.getByRole('button', { name: 'Assign interviewers' }));
     await userEvent.click(await screen.findByRole('checkbox', { name: a.email }));
     await userEvent.click(screen.getByRole('checkbox', { name: b.email }));
     await userEvent.type(screen.getByLabelText('Title'), 'New panel');
     await userEvent.click(screen.getByRole('button', { name: 'Book meeting' }));
     await waitFor(() =>
-      expect(calls.find((call) => call.method === 'POST')?.body?.interviewerIds).toEqual([a.id, b.id]),
+      expect(calls.find((call) => call.path === '/meetings' && call.method === 'POST')?.body?.interviewerIds).toEqual([a.id, b.id]),
     );
   });
 
@@ -96,7 +96,7 @@ describe('meeting assignment workflow', () => {
         title: 'Panel interview changed',
       }),
     );
-    expect(calls.some((call) => call.path === '/interviewers')).toBe(false);
+    expect(calls.some((call) => call.path === '/interviewers/search')).toBe(false);
   });
 
   it('keeps unassigned interviewers on read-only details with feedback available', async () => {
@@ -128,5 +128,18 @@ describe('meeting assignment workflow', () => {
     directoryFails = false;
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByRole('checkbox', { name: a.email })).toBeTruthy();
+  });
+
+  it('keeps email search text in the request body rather than the URL', async () => {
+    renderWithProviders(<MeetingForm />);
+    await userEvent.click(screen.getByRole('button', { name: 'Assign interviewers' }));
+    await userEvent.type(screen.getByLabelText('Search interviewer email'), a.email);
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/v1/interviewers/search',
+        expect.objectContaining({ method: 'POST', body: JSON.stringify({ query: a.email }) }),
+      ),
+    );
+    expect(vi.mocked(fetch).mock.calls.every(([url]) => !String(url).includes(encodeURIComponent(a.email)))).toBe(true);
   });
 });
